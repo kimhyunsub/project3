@@ -25,6 +25,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -59,6 +60,7 @@ public class AdminService {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy년 M월");
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
     private static final DataFormatter DATA_FORMATTER = new DataFormatter();
 
     private final EmployeeRepository employeeRepository;
@@ -221,7 +223,10 @@ public class AdminService {
                             formatScheduleTime(employee.getWorkStartTime()),
                             formatScheduleTime(employee.getWorkEndTime()),
                             toState(record),
-                            formatCheckIn(record)
+                            formatCheckIn(record),
+                            employee.getRegisteredDeviceId() != null && !employee.getRegisteredDeviceId().isBlank(),
+                            formatRegisteredDeviceName(employee),
+                            formatDeviceRegisteredAt(employee.getDeviceRegisteredAt())
                     );
                 })
                 .toList();
@@ -378,6 +383,12 @@ public class AdminService {
     }
 
     @Transactional
+    public void resetEmployeeDevice(String adminEmployeeCode, Long employeeId) {
+        Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
+        employee.resetRegisteredDevice();
+    }
+
+    @Transactional
     public EmployeeUploadResult uploadEmployees(String adminEmployeeCode, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("업로드할 엑셀 파일을 선택해 주세요.");
@@ -506,6 +517,23 @@ public class AdminService {
         }
         parseOptionalTime(workStartTime, rowNumber + "행 출근 기준 시간");
         parseOptionalTime(workEndTime, rowNumber + "행 퇴근 기준 시간");
+    }
+
+    private String formatRegisteredDeviceName(Employee employee) {
+        if (employee.getRegisteredDeviceId() == null || employee.getRegisteredDeviceId().isBlank()) {
+            return "-";
+        }
+        if (employee.getRegisteredDeviceName() == null || employee.getRegisteredDeviceName().isBlank()) {
+            return "등록된 단말";
+        }
+        return employee.getRegisteredDeviceName();
+    }
+
+    private String formatDeviceRegisteredAt(LocalDateTime registeredAt) {
+        if (registeredAt == null) {
+            return "-";
+        }
+        return registeredAt.format(DATE_TIME_FORMATTER);
     }
 
     private boolean isEmptyRow(Row row) {

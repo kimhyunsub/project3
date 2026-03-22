@@ -9,6 +9,9 @@ public record EmployeeRow(
         String workStartTime,
         String workEndTime,
         AttendanceState attendanceState,
-        String checkInTime
+        String checkInTime,
+        boolean deviceRegistered,
+        String registeredDeviceName,
+        String deviceRegisteredAt
 ) {
 }

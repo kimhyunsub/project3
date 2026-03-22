@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Entity
@@ -44,6 +45,15 @@ public class Employee extends BaseTimeEntity {
 
     @Column(name = "work_end_time")
     private LocalTime workEndTime;
+
+    @Column(name = "registered_device_id", length = 120)
+    private String registeredDeviceId;
+
+    @Column(name = "registered_device_name", length = 200)
+    private String registeredDeviceName;
+
+    @Column(name = "device_registered_at")
+    private LocalDateTime deviceRegisteredAt;
 
     protected Employee() {
     }
@@ -100,6 +110,18 @@ public class Employee extends BaseTimeEntity {
         return workEndTime;
     }
 
+    public String getRegisteredDeviceId() {
+        return registeredDeviceId;
+    }
+
+    public String getRegisteredDeviceName() {
+        return registeredDeviceName;
+    }
+
+    public LocalDateTime getDeviceRegisteredAt() {
+        return deviceRegisteredAt;
+    }
+
     public void updateProfile(String employeeCode, String name, EmployeeRole role, LocalTime workStartTime, LocalTime workEndTime) {
         this.employeeCode = employeeCode;
         this.name = name;
@@ -110,5 +132,11 @@ public class Employee extends BaseTimeEntity {
 
     public void updatePassword(String password) {
         this.password = password;
+    }
+
+    public void resetRegisteredDevice() {
+        this.registeredDeviceId = null;
+        this.registeredDeviceName = null;
+        this.deviceRegisteredAt = null;
     }
 }

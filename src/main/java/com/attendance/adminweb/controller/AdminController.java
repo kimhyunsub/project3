@@ -208,6 +208,19 @@ public class AdminController {
         return "redirect:/employees";
     }
 
+    @PostMapping("/employees/{employeeId}/device-reset")
+    public String resetEmployeeDevice(@PathVariable Long employeeId,
+                                      RedirectAttributes redirectAttributes,
+                                      Principal principal) {
+        try {
+            adminService.resetEmployeeDevice(principal.getName(), employeeId);
+            redirectAttributes.addFlashAttribute("message", "등록된 단말이 초기화되었습니다.");
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
+        }
+        return "redirect:/employees";
+    }
+
     private void validateCreateEmployeeForm(EmployeeForm form, BindingResult bindingResult) {
         if (form.getPassword() == null || form.getPassword().isBlank()) {
             bindingResult.rejectValue("password", "required", "비밀번호를 입력해 주세요.");

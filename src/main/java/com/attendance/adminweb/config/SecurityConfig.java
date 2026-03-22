@@ -1,5 +1,6 @@
 package com.attendance.adminweb.config;
 
+import com.attendance.adminweb.service.DatabaseUserDetailsService;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   DatabaseUserDetailsService databaseUserDetailsService,
                                                    AuthenticationFailureHandler authenticationFailureHandler) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
@@ -29,6 +31,12 @@ public class SecurityConfig {
                         .defaultSuccessUrl("/dashboard", true)
                         .failureHandler(authenticationFailureHandler)
                         .permitAll()
+                )
+                .rememberMe(remember -> remember
+                        .alwaysRemember(true)
+                        .tokenValiditySeconds(31536000)
+                        .key("attendance-admin-remember-me")
+                        .userDetailsService(databaseUserDetailsService)
                 )
                 .logout(Customizer.withDefaults());
 
