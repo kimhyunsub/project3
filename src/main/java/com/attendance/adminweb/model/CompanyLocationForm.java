@@ -4,9 +4,13 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class CompanyLocationForm {
 
+    @NotBlank(message = "회사명을 입력해 주세요.")
+    @Size(max = 100, message = "회사명은 100자 이하여야 합니다.")
     private String companyName;
 
     @NotNull(message = "위도를 입력해 주세요.")

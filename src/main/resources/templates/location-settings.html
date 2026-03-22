@@ -63,7 +63,8 @@
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                     <label>
                         회사명
-                        <input type="text" th:field="*{companyName}" readonly>
+                        <input type="text" th:field="*{companyName}" id="companyNameInput">
+                        <small class="field-error" th:if="${#fields.hasErrors('companyName')}" th:errors="*{companyName}"></small>
                     </label>
 
                     <div class="map-shell">
@@ -114,11 +115,12 @@
     const latitudeInput = document.getElementById("latitudeInput");
     const longitudeInput = document.getElementById("longitudeInput");
     const radiusInput = document.getElementById("radiusInput");
+    const companyNameInput = document.getElementById("companyNameInput");
     const currentLatitudeText = document.getElementById("currentLatitudeText");
     const currentLongitudeText = document.getElementById("currentLongitudeText");
     const currentRadiusText = document.getElementById("currentRadiusText");
 
-    if (mapElement && latitudeInput && longitudeInput && radiusInput) {
+    if (mapElement && latitudeInput && longitudeInput && radiusInput && companyNameInput) {
         const initialLatitude = Number(mapElement.dataset.latitude);
         const initialLongitude = Number(mapElement.dataset.longitude);
         const initialRadius = Number(mapElement.dataset.radius);
@@ -161,6 +163,11 @@
             radiusCircle.setRadius(normalizedRadius);
             currentRadiusText.textContent = normalizedRadius;
         }
+
+        companyNameInput.addEventListener("input", () => {
+            const nextCompanyName = companyNameInput.value.trim() || "회사 위치";
+            marker.bindPopup(nextCompanyName);
+        });
 
         map.on("click", (event) => {
             updateLocation(event.latlng.lat, event.latlng.lng);

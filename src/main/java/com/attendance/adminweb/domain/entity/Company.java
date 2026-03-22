@@ -44,6 +44,10 @@ public class Company extends BaseTimeEntity {
         return longitude;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
     public void updateLocation(Double latitude, Double longitude) {
         this.latitude = latitude;
         this.longitude = longitude;

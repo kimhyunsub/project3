@@ -327,6 +327,7 @@ public class AdminService {
         CompanySetting setting = companySettingRepository.findByCompany(company)
                 .orElseThrow(() -> new EntityNotFoundException("회사 설정을 찾을 수 없습니다."));
 
+        company.updateName(form.getCompanyName().trim());
         company.updateLocation(form.getLatitude(), form.getLongitude());
         setting.updateAllowedRadiusMeters(form.getAllowedRadiusMeters());
     }
