@@ -31,7 +31,7 @@
                 <div class="eyebrow">Members</div>
                 <h1>직원 목록</h1>
             </div>
-            <p>직원 등록, 수정, 삭제를 한 화면에서 처리할 수 있습니다.</p>
+            <p>직원 등록, 수정, 사용 여부 관리를 한 화면에서 처리할 수 있습니다.</p>
         </section>
 
         <div class="alert success" th:if="${message}" th:text="${message}">저장되었습니다.</div>
@@ -53,6 +53,7 @@
                     <th>회사</th>
                     <th>출근 기준</th>
                     <th>퇴근 기준</th>
+                    <th>사용 여부</th>
                     <th>등록 단말</th>
                     <th>등록 시각</th>
                     <th>출근 상태</th>
@@ -69,6 +70,13 @@
                     <td th:text="${employee.companyName()}">OpenAI Seoul Office</td>
                     <td th:text="${employee.workStartTime()}">09:00</td>
                     <td th:text="${employee.workEndTime()}">18:00</td>
+                    <td>
+                        <span class="pill"
+                              th:text="${employee.active()} ? '사용중' : '사용중지'"
+                              th:classappend="${employee.active()} ? ' success' : ' neutral'">
+                            사용중
+                        </span>
+                    </td>
                     <td th:text="${employee.registeredDeviceName()}">등록된 단말</td>
                     <td th:text="${employee.deviceRegisteredAt()}">2026.03.22 10:30</td>
                     <td>
@@ -90,9 +98,14 @@
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                                 <button type="submit" class="ghost-link">단말 초기화</button>
                             </form>
-                            <form th:action="@{/employees/{employeeId}/delete(employeeId=${employee.id()})}" method="post">
+                            <form th:action="@{/employees/{employeeId}/usage(employeeId=${employee.id()})}" method="post">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                                <button type="submit" class="danger-link">삭제</button>
+                                <input type="hidden" name="active" th:value="${!employee.active()}">
+                                <button type="submit"
+                                        th:class="${employee.active()} ? 'danger-link' : 'ghost-link'"
+                                        th:text="${employee.active()} ? '사용중지' : '사용재개'">
+                                    사용중지
+                                </button>
                             </form>
                         </div>
                     </td>

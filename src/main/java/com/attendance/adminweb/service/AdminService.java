@@ -208,7 +208,7 @@ public class AdminService {
     }
 
     public List<EmployeeRow> getEmployees(String employeeCode) {
-        List<Employee> employees = getCompanyEmployees(employeeCode);
+        List<Employee> employees = getAllCompanyEmployees(employeeCode);
         Map<Long, AttendanceRecord> recordsByEmployeeId = getTodayRecordsByEmployee(employees);
 
         return employees.stream()
@@ -222,6 +222,7 @@ public class AdminService {
                             employee.getCompany().getName(),
                             formatScheduleTime(employee.getWorkStartTime()),
                             formatScheduleTime(employee.getWorkEndTime()),
+                            employee.isActive(),
                             toState(record),
                             formatCheckIn(record),
                             employee.getRegisteredDeviceId() != null && !employee.getRegisteredDeviceId().isBlank(),
@@ -368,19 +369,19 @@ public class AdminService {
     }
 
     @Transactional
-    public void deleteEmployee(String adminEmployeeCode, Long employeeId) {
+    public void updateEmployeeUsage(String adminEmployeeCode, Long employeeId, boolean active) {
         Employee admin = getEmployeeByCode(adminEmployeeCode);
         Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
 
         if (admin.getId().equals(employee.getId())) {
-            throw new IllegalArgumentException("현재 로그인한 관리자 계정은 삭제할 수 없습니다.");
+            throw new IllegalArgumentException("현재 로그인한 관리자 계정은 사용 중지할 수 없습니다.");
         }
 
-        if (attendanceRecordRepository.existsByEmployeeId(employeeId)) {
-            throw new IllegalArgumentException("출근 기록이 있는 직원은 삭제할 수 없습니다.");
+        if (employee.isActive() == active) {
+            throw new IllegalArgumentException(active ? "이미 사용 중인 직원입니다." : "이미 사용 중지된 직원입니다.");
         }
 
-        employeeRepository.delete(employee);
+        employee.updateActive(active);
     }
 
     @Transactional
@@ -449,6 +450,11 @@ public class AdminService {
     }
 
     private List<Employee> getCompanyEmployees(String employeeCode) {
+        Employee admin = getEmployeeByCode(employeeCode);
+        return employeeRepository.findAllByCompanyIdAndActiveTrueOrderByNameAsc(admin.getCompany().getId());
+    }
+
+    private List<Employee> getAllCompanyEmployees(String employeeCode) {
         Employee admin = getEmployeeByCode(employeeCode);
         return employeeRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId());
     }

@@ -33,6 +33,10 @@ public class DatabaseUserDetailsService implements UserDetailsService {
         return new User(
                 employee.getEmployeeCode(),
                 employee.getPassword(),
+                employee.isActive(),
+                true,
+                true,
+                true,
                 List.of(new SimpleGrantedAuthority("ROLE_" + employee.getRole().name()))
         );
     }

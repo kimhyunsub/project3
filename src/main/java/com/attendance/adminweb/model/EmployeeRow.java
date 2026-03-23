@@ -8,6 +8,7 @@ public record EmployeeRow(
         String companyName,
         String workStartTime,
         String workEndTime,
+        boolean active,
         AttendanceState attendanceState,
         String checkInTime,
         boolean deviceRegistered,

@@ -195,13 +195,14 @@ public class AdminController {
         }
     }
 
-    @PostMapping("/employees/{employeeId}/delete")
-    public String deleteEmployee(@PathVariable Long employeeId,
-                                 RedirectAttributes redirectAttributes,
-                                 Principal principal) {
+    @PostMapping("/employees/{employeeId}/usage")
+    public String updateEmployeeUsage(@PathVariable Long employeeId,
+                                      @RequestParam boolean active,
+                                      RedirectAttributes redirectAttributes,
+                                      Principal principal) {
         try {
-            adminService.deleteEmployee(principal.getName(), employeeId);
-            redirectAttributes.addFlashAttribute("message", "직원이 삭제되었습니다.");
+            adminService.updateEmployeeUsage(principal.getName(), employeeId, active);
+            redirectAttributes.addFlashAttribute("message", active ? "직원이 다시 사용 상태로 변경되었습니다." : "직원이 사용 중지되었습니다.");
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
