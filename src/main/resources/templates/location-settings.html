@@ -309,6 +309,50 @@
         noticeMessageInput.setSelectionRange(cursor, cursor);
     }
 
+    function insertNoticeLink() {
+        if (!noticeMessageInput) {
+            return;
+        }
+
+        const start = noticeMessageInput.selectionStart ?? 0;
+        const end = noticeMessageInput.selectionEnd ?? 0;
+        const selectedText = noticeMessageInput.value.slice(start, end).trim();
+        const linkText = window.prompt(
+            "링크에 표시할 문구를 입력해 주세요.",
+            selectedText || "자세히 보기"
+        );
+
+        if (linkText === null) {
+            return;
+        }
+
+        const normalizedLinkText = linkText.trim() || "자세히 보기";
+        const linkUrl = window.prompt(
+            "이동할 주소를 입력해 주세요.",
+            "https://"
+        );
+
+        if (linkUrl === null) {
+            return;
+        }
+
+        const normalizedLinkUrl = linkUrl.trim();
+        if (!normalizedLinkUrl) {
+            window.alert("링크 주소를 입력해 주세요.");
+            return;
+        }
+
+        const nextValue =
+            noticeMessageInput.value.slice(0, start) +
+            `[${normalizedLinkText}](${normalizedLinkUrl})` +
+            noticeMessageInput.value.slice(end);
+
+        noticeMessageInput.value = nextValue;
+        noticeMessageInput.focus();
+        const cursor = start + normalizedLinkText.length + normalizedLinkUrl.length + 4;
+        noticeMessageInput.setSelectionRange(cursor, cursor);
+    }
+
     editorButtons.forEach((button) => {
         button.addEventListener("click", () => {
             const action = button.dataset.editorAction;
@@ -329,7 +373,7 @@
             }
 
             if (action === "link") {
-                wrapNoticeSelection("[", "](https://example.com)", "링크 문구");
+                insertNoticeLink();
             }
         });
     });
