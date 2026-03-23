@@ -131,6 +131,19 @@ textarea {
     resize: vertical;
 }
 
+.editor-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.editor-button {
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 12px;
+}
+
 input:focus {
     outline: 2px solid rgba(15, 118, 110, 0.18);
     border-color: var(--primary);

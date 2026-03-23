@@ -107,9 +107,17 @@
 
                     <label>
                         모바일 공지사항
+                        <div class="editor-toolbar">
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="heading">제목</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="bold">굵게</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="bullet">목록</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="link">링크</button>
+                        </div>
                         <textarea th:field="*{noticeMessage}"
+                                  id="noticeMessageInput"
                                   rows="5"
                                   placeholder="모바일 메인 화면에 노출할 공지사항을 입력해 주세요."></textarea>
+                        <small class="field-error">제목, 굵게, 목록, 링크 정도의 간단한 서식을 사용할 수 있습니다.</small>
                         <small class="field-error" th:if="${#fields.hasErrors('noticeMessage')}" th:errors="*{noticeMessage}"></small>
                     </label>
 
@@ -128,10 +136,12 @@
     const longitudeInput = document.getElementById("longitudeInput");
     const radiusInput = document.getElementById("radiusInput");
     const companyNameInput = document.getElementById("companyNameInput");
+    const noticeMessageInput = document.getElementById("noticeMessageInput");
     const useCurrentLocationButton = document.getElementById("useCurrentLocationButton");
     const currentLatitudeText = document.getElementById("currentLatitudeText");
     const currentLongitudeText = document.getElementById("currentLongitudeText");
     const currentRadiusText = document.getElementById("currentRadiusText");
+    const editorButtons = document.querySelectorAll("[data-editor-action]");
 
     if (mapElement && latitudeInput && longitudeInput && radiusInput && companyNameInput) {
         const initialLatitude = Number(mapElement.dataset.latitude);
@@ -258,6 +268,71 @@
         updateLocation(initialLatitude, initialLongitude);
         updateRadius(initialRadius);
     }
+
+    function wrapNoticeSelection(prefix, suffix, fallbackText) {
+        if (!noticeMessageInput) {
+            return;
+        }
+
+        const start = noticeMessageInput.selectionStart ?? 0;
+        const end = noticeMessageInput.selectionEnd ?? 0;
+        const selectedText = noticeMessageInput.value.slice(start, end) || fallbackText;
+        const nextValue =
+            noticeMessageInput.value.slice(0, start) +
+            prefix +
+            selectedText +
+            suffix +
+            noticeMessageInput.value.slice(end);
+
+        noticeMessageInput.value = nextValue;
+        noticeMessageInput.focus();
+        const selectionStart = start + prefix.length;
+        const selectionEnd = selectionStart + selectedText.length;
+        noticeMessageInput.setSelectionRange(selectionStart, selectionEnd);
+    }
+
+    function insertNoticeText(insertText) {
+        if (!noticeMessageInput) {
+            return;
+        }
+
+        const start = noticeMessageInput.selectionStart ?? 0;
+        const end = noticeMessageInput.selectionEnd ?? 0;
+        const nextValue =
+            noticeMessageInput.value.slice(0, start) +
+            insertText +
+            noticeMessageInput.value.slice(end);
+
+        noticeMessageInput.value = nextValue;
+        noticeMessageInput.focus();
+        const cursor = start + insertText.length;
+        noticeMessageInput.setSelectionRange(cursor, cursor);
+    }
+
+    editorButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            const action = button.dataset.editorAction;
+
+            if (action === "heading") {
+                insertNoticeText("## 제목을 입력해 주세요\n");
+                return;
+            }
+
+            if (action === "bold") {
+                wrapNoticeSelection("**", "**", "강조 문구");
+                return;
+            }
+
+            if (action === "bullet") {
+                insertNoticeText("- 항목을 입력해 주세요\n");
+                return;
+            }
+
+            if (action === "link") {
+                wrapNoticeSelection("[", "](https://example.com)", "링크 문구");
+            }
+        });
+    });
 </script>
 </body>
 </html>
