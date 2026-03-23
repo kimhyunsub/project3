@@ -61,7 +61,7 @@ class AdminControllerTest {
         given(adminService.getTodayAttendances(anyString(), anyString()))
                 .willReturn(List.of());
         given(adminService.getCompanyLocation(anyString()))
-                .willReturn(new CompanyLocationView("OpenAI Seoul Office", 37.5665, 126.9780, 100, "09:00", ""));
+                .willReturn(new CompanyLocationView("OpenAI Seoul Office", 37.5665, 126.9780, 100, "09:00", "", true));
 
         mockMvc.perform(get("/dashboard"))
                 .andExpect(status().isOk())
