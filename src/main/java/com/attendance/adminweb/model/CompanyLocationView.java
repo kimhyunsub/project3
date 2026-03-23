@@ -6,6 +6,7 @@ public record CompanyLocationView(
         double longitude,
         int allowedRadiusMeters,
         String lateAfterTime,
-        String noticeMessage
+        String noticeMessage,
+        boolean enforceSingleDeviceLogin
 ) {
 }

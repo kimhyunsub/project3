@@ -33,6 +33,9 @@ public class CompanySetting extends BaseTimeEntity {
     @Column(name = "notice_message", length = 1000)
     private String noticeMessage;
 
+    @Column(name = "enforce_single_device_login", nullable = false, columnDefinition = "boolean default true")
+    private boolean enforceSingleDeviceLogin = true;
+
     protected CompanySetting() {
     }
 
@@ -56,11 +59,19 @@ public class CompanySetting extends BaseTimeEntity {
         return noticeMessage;
     }
 
+    public boolean isEnforceSingleDeviceLogin() {
+        return enforceSingleDeviceLogin;
+    }
+
     public void updateAllowedRadiusMeters(Integer allowedRadiusMeters) {
         this.allowedRadiusMeters = allowedRadiusMeters;
     }
 
     public void updateNoticeMessage(String noticeMessage) {
         this.noticeMessage = noticeMessage;
+    }
+
+    public void updateEnforceSingleDeviceLogin(boolean enforceSingleDeviceLogin) {
+        this.enforceSingleDeviceLogin = enforceSingleDeviceLogin;
     }
 }

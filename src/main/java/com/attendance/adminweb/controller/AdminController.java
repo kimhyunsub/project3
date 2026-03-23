@@ -7,6 +7,7 @@ import com.attendance.adminweb.service.AdminService;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.time.DateTimeException;
 import java.time.YearMonth;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.io.ByteArrayResource;
@@ -55,11 +56,7 @@ public class AdminController {
                                     @RequestParam(required = false) String employeeCode,
                                     Model model,
                                     Principal principal) {
-        YearMonth currentMonth = YearMonth.now();
-        YearMonth selectedMonth = YearMonth.of(
-                year == null ? currentMonth.getYear() : year,
-                month == null ? currentMonth.getMonthValue() : month
-        );
+        YearMonth selectedMonth = resolveYearMonth(year, month);
 
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("selectedEmployeeCode", employeeCode);
@@ -75,7 +72,7 @@ public class AdminController {
     public ResponseEntity<ByteArrayResource> downloadMonthlyAttendanceExcel(@RequestParam Integer year,
                                                                             @RequestParam Integer month,
                                                                             Principal principal) {
-        YearMonth selectedMonth = YearMonth.of(year, month);
+        YearMonth selectedMonth = resolveYearMonth(year, month);
         byte[] fileBytes = adminService.exportMonthlyAttendanceExcel(principal.getName(), selectedMonth);
         String fileName = "monthly-attendance-" + selectedMonth + ".xlsx";
 
@@ -87,6 +84,18 @@ public class AdminController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .contentLength(fileBytes.length)
                 .body(new ByteArrayResource(fileBytes));
+    }
+
+    private YearMonth resolveYearMonth(Integer year, Integer month) {
+        YearMonth currentMonth = YearMonth.now();
+        int resolvedYear = year == null ? currentMonth.getYear() : year;
+        int resolvedMonth = month == null ? currentMonth.getMonthValue() : month;
+
+        try {
+            return YearMonth.of(resolvedYear, resolvedMonth);
+        } catch (DateTimeException exception) {
+            return currentMonth;
+        }
     }
 
     @GetMapping("/employees")

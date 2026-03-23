@@ -437,7 +437,8 @@ public class AdminService {
                 company.getLongitude(),
                 setting.getAllowedRadiusMeters(),
                 setting.getLateAfterTime().format(TIME_FORMATTER),
-                setting.getNoticeMessage()
+                setting.getNoticeMessage(),
+                setting.isEnforceSingleDeviceLogin()
         );
     }
 
@@ -450,6 +451,7 @@ public class AdminService {
         form.setAllowedRadiusMeters(location.allowedRadiusMeters());
         form.setLateAfterTime(location.lateAfterTime());
         form.setNoticeMessage(location.noticeMessage());
+        form.setEnforceSingleDeviceLogin(location.enforceSingleDeviceLogin());
         return form;
     }
 
@@ -465,6 +467,7 @@ public class AdminService {
         company.updateLocation(form.getLatitude(), form.getLongitude());
         setting.updateAllowedRadiusMeters(form.getAllowedRadiusMeters());
         setting.updateNoticeMessage(normalizeNoticeMessage(form.getNoticeMessage()));
+        setting.updateEnforceSingleDeviceLogin(form.isEnforceSingleDeviceLogin());
     }
 
     @Transactional

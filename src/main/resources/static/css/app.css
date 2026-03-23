@@ -101,6 +101,19 @@ label {
     font-weight: 600;
 }
 
+.toggle-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+}
+
+.toggle-field input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
 input {
     width: 100%;
     border: 1px solid var(--line);

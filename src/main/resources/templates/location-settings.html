@@ -50,6 +50,9 @@
                     </p>
                     <p><strong>허용 반경</strong> <span id="currentRadiusText" th:text="${location.allowedRadiusMeters()}">0</span>m</p>
                     <p><strong>지각 기준</strong> <span th:text="${location.lateAfterTime()}">09:00</span></p>
+                    <p><strong>단말 제한</strong>
+                        <span th:text="${location.enforceSingleDeviceLogin()} ? '단말 1대 제한 사용' : '단말 제한 없음'">단말 1대 제한 사용</span>
+                    </p>
                 </div>
                 <div class="map-help-card">
                     <strong>지도 사용 방법</strong>
@@ -103,6 +106,11 @@
                     <label>
                         지각 기준 시간
                         <input type="text" th:field="*{lateAfterTime}" readonly>
+                    </label>
+
+                    <label class="toggle-field">
+                        <input type="checkbox" th:field="*{enforceSingleDeviceLogin}">
+                        <span>계정당 로그인 단말을 1대로 제한</span>
                     </label>
 
                     <label>
