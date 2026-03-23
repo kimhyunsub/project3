@@ -5,15 +5,12 @@ public record EmployeeRow(
         String employeeCode,
         String name,
         String role,
-        String companyName,
         String workStartTime,
         String workEndTime,
-        boolean active,
-        boolean deleted,
         AttendanceState attendanceState,
         String checkInTime,
-        boolean deviceRegistered,
-        String registeredDeviceName,
-        String deviceRegisteredAt
+        String checkOutTime,
+        boolean active,
+        boolean deleted
 ) {
 }

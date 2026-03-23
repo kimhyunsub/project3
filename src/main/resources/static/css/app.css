@@ -263,6 +263,36 @@ table {
     table-layout: fixed;
 }
 
+.employees-table th:nth-child(1) {
+    width: 110px;
+}
+
+.employees-table th:nth-child(2) {
+    width: 110px;
+}
+
+.employees-table th:nth-child(3) {
+    width: 96px;
+}
+
+.employees-table th:nth-child(4) {
+    width: 132px;
+}
+
+.employees-table th:nth-child(5),
+.employees-table th:nth-child(6) {
+    width: 110px;
+}
+
+.employees-table th:nth-child(7),
+.employees-table th:nth-child(8) {
+    width: 104px;
+}
+
+.employees-table th:nth-child(9) {
+    width: 260px;
+}
+
 th,
 td {
     text-align: left;
@@ -290,6 +320,33 @@ th {
 
 .compact-device-cell {
     max-width: 84px;
+}
+
+.status-cell,
+.time-cell,
+.schedule-cell {
+    vertical-align: middle;
+}
+
+.status-cell .pill {
+    min-width: 88px;
+    justify-content: center;
+}
+
+.emphasis-time {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+}
+
+.schedule-cell {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.manage-cell .action-row {
+    gap: 8px;
 }
 
 .pill {

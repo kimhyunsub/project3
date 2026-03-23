@@ -219,16 +219,13 @@ public class AdminService {
                             employee.getEmployeeCode(),
                             employee.getName(),
                             employee.getRole().name(),
-                            employee.getCompany().getName(),
                             formatScheduleTime(employee.getWorkStartTime()),
                             formatScheduleTime(employee.getWorkEndTime()),
-                            employee.isActive(),
-                            employee.isDeleted(),
                             toState(record),
                             formatCheckIn(record),
-                            employee.getRegisteredDeviceId() != null && !employee.getRegisteredDeviceId().isBlank(),
-                            formatRegisteredDeviceName(employee),
-                            formatDeviceRegisteredAt(employee.getDeviceRegisteredAt())
+                            formatCheckOut(record),
+                            employee.isActive(),
+                            employee.isDeleted()
                     );
                 })
                 .toList();

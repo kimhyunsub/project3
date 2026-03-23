@@ -51,52 +51,23 @@
             <table class="employees-table">
                 <thead>
                 <tr>
-                    <th>ID</th>
                     <th>사번</th>
                     <th>이름</th>
                     <th>권한</th>
-                    <th>회사</th>
-                    <th>출근 기준</th>
-                    <th>퇴근 기준</th>
-                    <th>사용 여부</th>
-                    <th>삭제 여부</th>
-                    <th class="compact-column">등록 단말</th>
-                    <th class="compact-column">등록 시각</th>
                     <th>출근 상태</th>
                     <th>출근 시간</th>
+                    <th>퇴근 시간</th>
+                    <th>출근 기준</th>
+                    <th>퇴근 기준</th>
                     <th>관리</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="employee : ${employees}">
-                    <td th:text="${employee.id()}">1</td>
                     <td th:text="${employee.employeeCode()}">EMP001</td>
                     <td th:text="${employee.name()}">홍길동</td>
                     <td th:text="${employee.role()}">EMPLOYEE</td>
-                    <td th:text="${employee.companyName()}">OpenAI Seoul Office</td>
-                    <td th:text="${employee.workStartTime()}">09:00</td>
-                    <td th:text="${employee.workEndTime()}">18:00</td>
-                    <td>
-                        <span class="pill"
-                              th:text="${employee.active()} ? '사용중' : '사용중지'"
-                              th:classappend="${employee.active()} ? ' success' : ' neutral'">
-                            사용중
-                        </span>
-                    </td>
-                    <td>
-                        <span class="pill"
-                              th:text="${employee.deleted()} ? '삭제됨' : '정상'"
-                              th:classappend="${employee.deleted()} ? ' danger' : ' neutral'">
-                            정상
-                        </span>
-                    </td>
-                    <td class="compact-cell compact-device-cell"
-                        th:text="${employee.registeredDeviceName()}"
-                        th:title="${employee.registeredDeviceName()}">등록된 단말</td>
-                    <td class="compact-cell"
-                        th:text="${employee.deviceRegisteredAt()}"
-                        th:title="${employee.deviceRegisteredAt()}">2026.03.22 10:30</td>
-                    <td>
+                    <td class="status-cell">
                         <span class="pill"
                               th:text="${employee.attendanceState().label}"
                               th:classappend="${employee.attendanceState().name() == 'WORKING'} ? ' success' :
@@ -105,19 +76,15 @@
                             상태
                         </span>
                     </td>
-                    <td th:text="${employee.checkInTime()}">09:00</td>
-                    <td>
+                    <td class="time-cell emphasis-time" th:text="${employee.checkInTime()}">09:00</td>
+                    <td class="time-cell emphasis-time" th:text="${employee.checkOutTime()}">18:00</td>
+                    <td class="schedule-cell" th:text="${employee.workStartTime()}">09:00</td>
+                    <td class="schedule-cell" th:text="${employee.workEndTime()}">18:00</td>
+                    <td class="manage-cell">
                         <div class="action-row">
                             <a th:if="${!employee.deleted()}"
                                th:href="@{/employees(editId=${employee.id()})}"
                                class="ghost-link small-link">수정</a>
-                            <form th:if="${employee.deviceRegistered() and !employee.deleted()}"
-                                  th:action="@{/employees/{employeeId}/device-reset(employeeId=${employee.id()})}"
-                                  method="post">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                                <input type="hidden" name="showDeleted" th:value="${showDeleted}">
-                                <button type="submit" class="ghost-link">단말 초기화</button>
-                            </form>
                             <form th:if="${!employee.deleted()}"
                                   th:action="@{/employees/{employeeId}/usage(employeeId=${employee.id()})}" method="post">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
