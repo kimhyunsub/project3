@@ -77,6 +77,10 @@
                         </div>
                     </div>
 
+                    <div class="button-row">
+                        <button type="button" id="useCurrentLocationButton" class="ghost-link">현재 위치 사용</button>
+                    </div>
+
                     <div class="form-row">
                         <label>
                             위도
@@ -116,6 +120,7 @@
     const longitudeInput = document.getElementById("longitudeInput");
     const radiusInput = document.getElementById("radiusInput");
     const companyNameInput = document.getElementById("companyNameInput");
+    const useCurrentLocationButton = document.getElementById("useCurrentLocationButton");
     const currentLatitudeText = document.getElementById("currentLatitudeText");
     const currentLongitudeText = document.getElementById("currentLongitudeText");
     const currentRadiusText = document.getElementById("currentRadiusText");
@@ -158,6 +163,13 @@
             radiusCircle.setLatLng([latitude, longitude]);
         }
 
+        function moveMap(latitude, longitude) {
+            map.flyTo([latitude, longitude], Math.max(map.getZoom(), 16), {
+                animate: true,
+                duration: 0.6
+            });
+        }
+
         function updateRadius(radius) {
             const normalizedRadius = Number(radius) || 0;
             radiusCircle.setRadius(normalizedRadius);
@@ -171,11 +183,13 @@
 
         map.on("click", (event) => {
             updateLocation(event.latlng.lat, event.latlng.lng);
+            moveMap(event.latlng.lat, event.latlng.lng);
         });
 
         marker.on("dragend", (event) => {
             const position = event.target.getLatLng();
             updateLocation(position.lat, position.lng);
+            moveMap(position.lat, position.lng);
         });
 
         latitudeInput.addEventListener("input", () => {
@@ -183,7 +197,7 @@
             const longitude = Number(longitudeInput.value);
             if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
                 updateLocation(latitude, longitude);
-                map.panTo([latitude, longitude]);
+                moveMap(latitude, longitude);
             }
         });
 
@@ -192,13 +206,46 @@
             const longitude = Number(longitudeInput.value);
             if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
                 updateLocation(latitude, longitude);
-                map.panTo([latitude, longitude]);
+                moveMap(latitude, longitude);
             }
         });
 
         radiusInput.addEventListener("input", () => {
             updateRadius(radiusInput.value);
         });
+
+        if (useCurrentLocationButton) {
+            useCurrentLocationButton.addEventListener("click", () => {
+                if (!navigator.geolocation) {
+                    window.alert("현재 브라우저에서는 위치 정보를 사용할 수 없습니다.");
+                    return;
+                }
+
+                useCurrentLocationButton.disabled = true;
+                useCurrentLocationButton.textContent = "현재 위치 확인 중...";
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
+                        updateLocation(latitude, longitude);
+                        moveMap(latitude, longitude);
+                        useCurrentLocationButton.disabled = false;
+                        useCurrentLocationButton.textContent = "현재 위치 사용";
+                    },
+                    () => {
+                        window.alert("현재 위치를 가져오지 못했습니다. 브라우저 위치 권한을 확인해 주세요.");
+                        useCurrentLocationButton.disabled = false;
+                        useCurrentLocationButton.textContent = "현재 위치 사용";
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
 
         updateLocation(initialLatitude, initialLongitude);
         updateRadius(initialRadius);
