@@ -43,7 +43,7 @@
                 <a th:href="@{/employees}" class="ghost-link">신규 등록 모드</a>
             </div>
             <p class="section-copy">각 계정은 한 대의 출퇴근 단말만 등록할 수 있습니다. 다른 기기에서 로그인하려면 여기서 먼저 단말 초기화를 실행해 주세요.</p>
-            <table>
+            <table class="employees-table">
                 <thead>
                 <tr>
                     <th>ID</th>
@@ -54,8 +54,8 @@
                     <th>출근 기준</th>
                     <th>퇴근 기준</th>
                     <th>사용 여부</th>
-                    <th>등록 단말</th>
-                    <th>등록 시각</th>
+                    <th class="compact-column">등록 단말</th>
+                    <th class="compact-column">등록 시각</th>
                     <th>출근 상태</th>
                     <th>출근 시간</th>
                     <th>관리</th>
@@ -77,8 +77,12 @@
                             사용중
                         </span>
                     </td>
-                    <td th:text="${employee.registeredDeviceName()}">등록된 단말</td>
-                    <td th:text="${employee.deviceRegisteredAt()}">2026.03.22 10:30</td>
+                    <td class="compact-cell compact-device-cell"
+                        th:text="${employee.registeredDeviceName()}"
+                        th:title="${employee.registeredDeviceName()}">등록된 단말</td>
+                    <td class="compact-cell"
+                        th:text="${employee.deviceRegisteredAt()}"
+                        th:title="${employee.deviceRegisteredAt()}">2026.03.22 10:30</td>
                     <td>
                         <span class="pill"
                               th:text="${employee.attendanceState().label}"

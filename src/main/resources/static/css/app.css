@@ -259,6 +259,10 @@ table {
     border-collapse: collapse;
 }
 
+.employees-table {
+    table-layout: fixed;
+}
+
 th,
 td {
     text-align: left;
@@ -270,6 +274,22 @@ td {
 th {
     color: var(--muted);
     font-weight: 700;
+}
+
+.compact-column {
+    width: 92px;
+}
+
+.compact-cell {
+    max-width: 92px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.compact-device-cell {
+    max-width: 84px;
 }
 
 .pill {
