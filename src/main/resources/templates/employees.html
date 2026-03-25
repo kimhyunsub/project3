@@ -41,18 +41,24 @@
             <div class="panel-header">
                 <h2>직원 목록</h2>
                 <div class="action-row">
-                    <a th:href="${showDeleted} ? @{/employees} : @{/employees(showDeleted=true)}"
+                    <a th:href="${showDeleted} ? @{/employees(page=${currentPage})} : @{/employees(showDeleted=true, page=${currentPage})}"
                        class="ghost-link"
                        th:text="${showDeleted} ? '활성 직원 보기' : '삭제된 직원 보기'">삭제된 직원 보기</a>
                     <a th:href="@{/employees}" class="ghost-link">신규 등록 모드</a>
                 </div>
             </div>
             <p class="section-copy">각 계정은 한 대의 출퇴근 단말만 등록할 수 있습니다. 다른 기기에서 로그인하려면 여기서 먼저 단말 초기화를 실행해 주세요.</p>
-            <table class="employees-table">
+            <div class="list-summary">
+                <span th:text="|총 ${totalCount}명|">총 0명</span>
+                <span th:text="|${currentPage} / ${totalPages} 페이지|">1 / 1 페이지</span>
+            </div>
+            <div class="table-scroll">
+            <table class="employees-table compact-table">
                 <thead>
                 <tr>
                     <th>사번</th>
                     <th>이름</th>
+                    <th>사업장</th>
                     <th>권한</th>
                     <th>출근 상태</th>
                     <th>출근 시간</th>
@@ -66,6 +72,7 @@
                 <tr th:each="employee : ${employees}">
                     <td th:text="${employee.employeeCode()}">EMP001</td>
                     <td th:text="${employee.name()}">홍길동</td>
+                    <td class="company-cell" th:text="${employee.workplaceName()}">본사</td>
                     <td th:text="${employee.role()}">EMPLOYEE</td>
                     <td class="status-cell">
                         <span class="pill"
@@ -83,12 +90,13 @@
                     <td class="manage-cell">
                         <div class="action-row">
                             <a th:if="${!employee.deleted()}"
-                               th:href="@{/employees(editId=${employee.id()})}"
+                               th:href="@{/employees(editId=${employee.id()}, page=${currentPage}, showDeleted=${showDeleted})}"
                                class="ghost-link small-link">수정</a>
                             <form th:if="${employee.deviceRegistered() and !employee.deleted()}"
                                   th:action="@{/employees/{employeeId}/device-reset(employeeId=${employee.id()})}" method="post">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                                 <input type="hidden" name="showDeleted" th:value="${showDeleted}">
+                                <input type="hidden" name="page" th:value="${currentPage}">
                                 <button type="submit" class="ghost-link">단말 초기화</button>
                             </form>
                             <form th:if="${!employee.deleted()}"
@@ -96,6 +104,7 @@
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                                 <input type="hidden" name="active" th:value="${!employee.active()}">
                                 <input type="hidden" name="showDeleted" th:value="${showDeleted}">
+                                <input type="hidden" name="page" th:value="${currentPage}">
                                 <button type="submit"
                                         th:class="${employee.active()} ? 'danger-link' : 'ghost-link'"
                                         th:text="${employee.active()} ? '사용중지' : '사용재개'">
@@ -105,11 +114,13 @@
                             <form th:if="${!employee.deleted()}"
                                   th:action="@{/employees/{employeeId}/delete(employeeId=${employee.id()})}" method="post">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <input type="hidden" name="page" th:value="${currentPage}">
                                 <button type="submit" class="danger-link">삭제</button>
                             </form>
                             <form th:if="${employee.deleted()}"
                                   th:action="@{/employees/{employeeId}/restore(employeeId=${employee.id()})}" method="post">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <input type="hidden" name="page" th:value="${currentPage}">
                                 <button type="submit" class="ghost-link">복구</button>
                             </form>
                         </div>
@@ -117,6 +128,16 @@
                 </tr>
                 </tbody>
             </table>
+            </div>
+            <div class="pagination-bar" th:if="${totalPages > 1}">
+                <a th:if="${hasPreviousPage}"
+                   th:href="@{/employees(page=${currentPage - 1}, showDeleted=${showDeleted}, editId=${editId})}"
+                   class="ghost-link small-link">이전</a>
+                <span class="pagination-current" th:text="|${currentPage} / ${totalPages}|">1 / 1</span>
+                <a th:if="${hasNextPage}"
+                   th:href="@{/employees(page=${currentPage + 1}, showDeleted=${showDeleted}, editId=${editId})}"
+                   class="ghost-link small-link">다음</a>
+            </div>
         </section>
 
         <section class="panel">
@@ -177,6 +198,18 @@
                         </select>
                         <small class="field-error" th:if="${#fields.hasErrors('role')}" th:errors="*{role}"></small>
                     </label>
+                    <label>
+                        사업장
+                        <select th:field="*{workplaceId}">
+                            <option th:value="${null}">본사</option>
+                            <option th:each="workplace : ${workplaceOptions}"
+                                    th:value="${workplace.id()}"
+                                    th:text="${workplace.name()}">사업장</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="form-row">
                     <label>
                         비밀번호
                         <input type="password" th:field="*{password}" th:placeholder="${editing} ? '변경 시에만 입력' : '8자 이상 입력'">

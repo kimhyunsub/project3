@@ -34,34 +34,50 @@
                 <div class="eyebrow">Settings</div>
                 <h1>회사 위치 설정</h1>
             </div>
-            <p>백엔드 DB의 회사 좌표와 출근 반경을 직접 관리합니다.</p>
+            <p>회사 기본 위치와 사업장별 출근 좌표를 각각 관리할 수 있습니다.</p>
         </section>
 
         <div class="alert success" th:if="${message}" th:text="${message}">저장되었습니다.</div>
+        <div class="alert error" th:if="${employeeErrorMessage}" th:text="${employeeErrorMessage}">오류가 발생했습니다.</div>
 
-        <section class="settings-layout">
+        <section class="panel">
+            <div class="panel-header">
+                <h2>사업장 탭</h2>
+            </div>
+            <div class="location-tabs">
+                <a th:href="@{/settings/location}"
+                   th:classappend="${selectedWorkplaceId == null} ? ' active' : ''">회사 기본</a>
+                <a th:each="workplace : ${workplaces}"
+                   th:href="@{/settings/location(workplaceId=${workplace.id()})}"
+                   th:text="${workplace.name()}"
+                   th:classappend="${selectedWorkplaceId == workplace.id()} ? ' active' : ''">사업장</a>
+            </div>
+            <p class="section-copy">직원을 특정 사업장으로 지정하면 모바일 출퇴근은 해당 사업장 위치와 반경을 기준으로 동작합니다. 사업장을 지정하지 않은 직원은 회사 기본 위치를 사용합니다.</p>
+        </section>
+
+        <section class="settings-layout" th:if="${selectedWorkplaceId == null}">
             <article class="panel">
-                <h2>현재 설정</h2>
+                <h2>회사 기본 설정</h2>
                 <div class="location-preview">
                     <p><strong>회사명</strong> <span th:text="${location.companyName()}">회사명</span></p>
                     <p><strong>좌표</strong>
-                        <span id="currentLatitudeText" th:text="${location.latitude()}">0</span>,
-                        <span id="currentLongitudeText" th:text="${location.longitude()}">0</span>
+                        <span id="currentCompanyLatitudeText" th:text="${location.latitude()}">0</span>,
+                        <span id="currentCompanyLongitudeText" th:text="${location.longitude()}">0</span>
                     </p>
-                    <p><strong>허용 반경</strong> <span id="currentRadiusText" th:text="${location.allowedRadiusMeters()}">0</span>m</p>
+                    <p><strong>허용 반경</strong> <span id="currentCompanyRadiusText" th:text="${location.allowedRadiusMeters()}">0</span>m</p>
                     <p><strong>지각 기준</strong> <span th:text="${location.lateAfterTime()}">09:00</span></p>
                     <p><strong>단말 제한</strong>
                         <span th:text="${location.enforceSingleDeviceLogin()} ? '단말 1대 제한 사용' : '단말 제한 없음'">단말 1대 제한 사용</span>
                     </p>
                 </div>
                 <div class="map-help-card">
-                    <strong>지도 사용 방법</strong>
-                    <p>지도를 클릭하거나 핀을 드래그하면 회사 좌표가 바로 반영됩니다. 허용 반경도 원으로 미리 확인할 수 있습니다.</p>
+                    <strong>기본 위치 사용 대상</strong>
+                    <p>사업장을 따로 지정하지 않은 직원은 회사 기본 위치를 기준으로 출근 반경이 계산됩니다.</p>
                 </div>
             </article>
 
             <article class="panel">
-                <h2>위치 수정</h2>
+                <h2>회사 기본 위치 수정</h2>
                 <form th:action="@{/settings/location}" th:object="${locationForm}" method="post" class="settings-form">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                     <label>
@@ -76,30 +92,30 @@
                              th:attr="data-latitude=${locationForm.latitude},
                                       data-longitude=${locationForm.longitude},
                                       data-radius=${locationForm.allowedRadiusMeters},
-                                      data-company-name=${locationForm.companyName}">
+                                      data-location-name=${locationForm.companyName}">
                         </div>
                     </div>
 
                     <div class="button-row">
-                        <button type="button" id="useCurrentLocationButton" class="ghost-link">현재 위치 사용</button>
+                        <button type="button" id="useCompanyCurrentLocationButton" class="ghost-link">현재 위치 사용</button>
                     </div>
 
                     <div class="form-row">
                         <label>
                             위도
-                            <input type="number" step="0.000001" th:field="*{latitude}" id="latitudeInput">
+                            <input type="number" step="0.000001" th:field="*{latitude}" id="companyLatitudeInput">
                             <small class="field-error" th:if="${#fields.hasErrors('latitude')}" th:errors="*{latitude}"></small>
                         </label>
                         <label>
                             경도
-                            <input type="number" step="0.000001" th:field="*{longitude}" id="longitudeInput">
+                            <input type="number" step="0.000001" th:field="*{longitude}" id="companyLongitudeInput">
                             <small class="field-error" th:if="${#fields.hasErrors('longitude')}" th:errors="*{longitude}"></small>
                         </label>
                     </div>
 
                     <label>
                         허용 반경(m)
-                        <input type="number" th:field="*{allowedRadiusMeters}" id="radiusInput">
+                        <input type="number" th:field="*{allowedRadiusMeters}" id="companyRadiusInput">
                         <small class="field-error" th:if="${#fields.hasErrors('allowedRadiusMeters')}" th:errors="*{allowedRadiusMeters}"></small>
                     </label>
 
@@ -134,29 +150,135 @@
                 </form>
             </article>
         </section>
+
+        <section class="settings-layout" th:if="${selectedWorkplaceId != null}">
+            <article class="panel">
+                <h2>선택한 사업장 설정</h2>
+                <div th:each="workplace : ${workplaces}" th:if="${workplace.id() == selectedWorkplaceId}" class="location-preview">
+                    <p><strong>사업장명</strong> <span th:text="${workplace.name()}">사업장</span></p>
+                    <p><strong>좌표</strong>
+                        <span id="currentWorkplaceLatitudeText" th:text="${workplace.latitude()}">0</span>,
+                        <span id="currentWorkplaceLongitudeText" th:text="${workplace.longitude()}">0</span>
+                    </p>
+                    <p><strong>허용 반경</strong> <span id="currentWorkplaceRadiusText" th:text="${workplace.allowedRadiusMeters()}">0</span>m</p>
+                </div>
+                <div class="map-help-card">
+                    <strong>사업장 출근 기준</strong>
+                    <p>이 사업장으로 지정된 직원은 모바일에서 이 위치와 허용 반경을 기준으로 출근 가능 여부가 계산됩니다.</p>
+                </div>
+            </article>
+
+            <article class="panel">
+                <h2>사업장 위치 수정</h2>
+                <form th:action="@{/settings/location/workplaces/{workplaceId}(workplaceId=${selectedWorkplaceId})}"
+                      th:object="${workplaceForm}"
+                      method="post"
+                      class="settings-form">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <label>
+                        사업장명
+                        <input type="text" th:field="*{name}" id="workplaceNameInput">
+                        <small class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></small>
+                    </label>
+
+                    <div class="map-shell">
+                        <div id="workplaceMap"
+                             class="company-map"
+                             th:attr="data-latitude=${workplaceForm.latitude},
+                                      data-longitude=${workplaceForm.longitude},
+                                      data-radius=${workplaceForm.allowedRadiusMeters},
+                                      data-location-name=${workplaceForm.name}">
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button type="button" id="useWorkplaceCurrentLocationButton" class="ghost-link">현재 위치 사용</button>
+                    </div>
+
+                    <div class="form-row">
+                        <label>
+                            위도
+                            <input type="number" step="0.000001" th:field="*{latitude}" id="workplaceLatitudeInput">
+                            <small class="field-error" th:if="${#fields.hasErrors('latitude')}" th:errors="*{latitude}"></small>
+                        </label>
+                        <label>
+                            경도
+                            <input type="number" step="0.000001" th:field="*{longitude}" id="workplaceLongitudeInput">
+                            <small class="field-error" th:if="${#fields.hasErrors('longitude')}" th:errors="*{longitude}"></small>
+                        </label>
+                    </div>
+
+                    <label>
+                        허용 반경(m)
+                        <input type="number" th:field="*{allowedRadiusMeters}" id="workplaceRadiusInput">
+                        <small class="field-error" th:if="${#fields.hasErrors('allowedRadiusMeters')}" th:errors="*{allowedRadiusMeters}"></small>
+                    </label>
+
+                    <button type="submit" class="primary-button">사업장 저장</button>
+                </form>
+            </article>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>사업장 추가</h2>
+            </div>
+            <form th:action="@{/settings/location/workplaces}" th:object="${newWorkplaceForm}" method="post" class="settings-form compact-settings-form">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="form-row">
+                    <label>
+                        사업장명
+                        <input type="text" th:field="*{name}" placeholder="예: 강남지점">
+                        <small class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></small>
+                    </label>
+                    <label>
+                        허용 반경(m)
+                        <input type="number" th:field="*{allowedRadiusMeters}" placeholder="100">
+                        <small class="field-error" th:if="${#fields.hasErrors('allowedRadiusMeters')}" th:errors="*{allowedRadiusMeters}"></small>
+                    </label>
+                </div>
+                <div class="form-row">
+                    <label>
+                        위도
+                        <input type="number" step="0.000001" th:field="*{latitude}" placeholder="37.566500">
+                        <small class="field-error" th:if="${#fields.hasErrors('latitude')}" th:errors="*{latitude}"></small>
+                    </label>
+                    <label>
+                        경도
+                        <input type="number" step="0.000001" th:field="*{longitude}" placeholder="126.978000">
+                        <small class="field-error" th:if="${#fields.hasErrors('longitude')}" th:errors="*{longitude}"></small>
+                    </label>
+                </div>
+                <div class="button-row">
+                    <button type="submit" class="primary-button">사업장 추가</button>
+                </div>
+            </form>
+        </section>
     </main>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
-<script th:inline="javascript">
-    const mapElement = document.getElementById("companyMap");
-    const latitudeInput = document.getElementById("latitudeInput");
-    const longitudeInput = document.getElementById("longitudeInput");
-    const radiusInput = document.getElementById("radiusInput");
-    const companyNameInput = document.getElementById("companyNameInput");
-    const noticeMessageInput = document.getElementById("noticeMessageInput");
-    const useCurrentLocationButton = document.getElementById("useCurrentLocationButton");
-    const currentLatitudeText = document.getElementById("currentLatitudeText");
-    const currentLongitudeText = document.getElementById("currentLongitudeText");
-    const currentRadiusText = document.getElementById("currentRadiusText");
-    const editorButtons = document.querySelectorAll("[data-editor-action]");
+<script>
+    function initializeLocationEditor(config) {
+        const mapElement = document.getElementById(config.mapId);
+        const latitudeInput = document.getElementById(config.latitudeInputId);
+        const longitudeInput = document.getElementById(config.longitudeInputId);
+        const radiusInput = document.getElementById(config.radiusInputId);
+        const nameInput = document.getElementById(config.nameInputId);
+        const useCurrentLocationButton = document.getElementById(config.useCurrentLocationButtonId);
+        const currentLatitudeText = document.getElementById(config.currentLatitudeTextId);
+        const currentLongitudeText = document.getElementById(config.currentLongitudeTextId);
+        const currentRadiusText = document.getElementById(config.currentRadiusTextId);
 
-    if (mapElement && latitudeInput && longitudeInput && radiusInput && companyNameInput) {
+        if (!mapElement || !latitudeInput || !longitudeInput || !radiusInput || !nameInput) {
+            return;
+        }
+
         const initialLatitude = Number(mapElement.dataset.latitude);
         const initialLongitude = Number(mapElement.dataset.longitude);
         const initialRadius = Number(mapElement.dataset.radius);
-        const companyName = mapElement.dataset.companyName || "회사 위치";
+        const locationName = mapElement.dataset.locationName || "위치";
 
         const map = L.map(mapElement).setView([initialLatitude, initialLongitude], 16);
 
@@ -165,10 +287,8 @@
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        const marker = L.marker([initialLatitude, initialLongitude], {
-            draggable: true
-        }).addTo(map);
-        marker.bindPopup(companyName);
+        const marker = L.marker([initialLatitude, initialLongitude], { draggable: true }).addTo(map);
+        marker.bindPopup(locationName);
 
         const radiusCircle = L.circle([initialLatitude, initialLongitude], {
             radius: initialRadius,
@@ -184,8 +304,12 @@
         function updateLocation(latitude, longitude) {
             latitudeInput.value = formatCoordinate(latitude);
             longitudeInput.value = formatCoordinate(longitude);
-            currentLatitudeText.textContent = formatCoordinate(latitude);
-            currentLongitudeText.textContent = formatCoordinate(longitude);
+            if (currentLatitudeText) {
+                currentLatitudeText.textContent = formatCoordinate(latitude);
+            }
+            if (currentLongitudeText) {
+                currentLongitudeText.textContent = formatCoordinate(longitude);
+            }
             marker.setLatLng([latitude, longitude]);
             radiusCircle.setLatLng([latitude, longitude]);
         }
@@ -200,12 +324,13 @@
         function updateRadius(radius) {
             const normalizedRadius = Number(radius) || 0;
             radiusCircle.setRadius(normalizedRadius);
-            currentRadiusText.textContent = normalizedRadius;
+            if (currentRadiusText) {
+                currentRadiusText.textContent = normalizedRadius;
+            }
         }
 
-        companyNameInput.addEventListener("input", () => {
-            const nextCompanyName = companyNameInput.value.trim() || "회사 위치";
-            marker.bindPopup(nextCompanyName);
+        nameInput.addEventListener("input", () => {
+            marker.bindPopup(nameInput.value.trim() || "위치");
         });
 
         map.on("click", (event) => {
@@ -253,10 +378,8 @@
 
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        const latitude = position.coords.latitude;
-                        const longitude = position.coords.longitude;
-                        updateLocation(latitude, longitude);
-                        moveMap(latitude, longitude);
+                        updateLocation(position.coords.latitude, position.coords.longitude);
+                        moveMap(position.coords.latitude, position.coords.longitude);
                         useCurrentLocationButton.disabled = false;
                         useCurrentLocationButton.textContent = "현재 위치 사용";
                     },
@@ -267,163 +390,72 @@
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
+                        timeout: 10000
                     }
                 );
             });
         }
-
-        updateLocation(initialLatitude, initialLongitude);
-        updateRadius(initialRadius);
     }
 
-    function wrapNoticeSelection(prefix, suffix, fallbackText) {
+    initializeLocationEditor({
+        mapId: "companyMap",
+        latitudeInputId: "companyLatitudeInput",
+        longitudeInputId: "companyLongitudeInput",
+        radiusInputId: "companyRadiusInput",
+        nameInputId: "companyNameInput",
+        useCurrentLocationButtonId: "useCompanyCurrentLocationButton",
+        currentLatitudeTextId: "currentCompanyLatitudeText",
+        currentLongitudeTextId: "currentCompanyLongitudeText",
+        currentRadiusTextId: "currentCompanyRadiusText"
+    });
+
+    initializeLocationEditor({
+        mapId: "workplaceMap",
+        latitudeInputId: "workplaceLatitudeInput",
+        longitudeInputId: "workplaceLongitudeInput",
+        radiusInputId: "workplaceRadiusInput",
+        nameInputId: "workplaceNameInput",
+        useCurrentLocationButtonId: "useWorkplaceCurrentLocationButton",
+        currentLatitudeTextId: "currentWorkplaceLatitudeText",
+        currentLongitudeTextId: "currentWorkplaceLongitudeText",
+        currentRadiusTextId: "currentWorkplaceRadiusText"
+    });
+
+    const noticeMessageInput = document.getElementById("noticeMessageInput");
+    const editorButtons = document.querySelectorAll("[data-editor-action]");
+
+    function wrapNoticeSelection(prefix, suffix, placeholder) {
         if (!noticeMessageInput) {
             return;
         }
 
         const start = noticeMessageInput.selectionStart ?? 0;
         const end = noticeMessageInput.selectionEnd ?? 0;
-        const selectedText = noticeMessageInput.value.slice(start, end) || fallbackText;
-        const nextValue =
-            noticeMessageInput.value.slice(0, start) +
-            prefix +
-            selectedText +
-            suffix +
-            noticeMessageInput.value.slice(end);
+        const selectedText = noticeMessageInput.value.slice(start, end) || placeholder;
+        const before = noticeMessageInput.value.slice(0, start);
+        const after = noticeMessageInput.value.slice(end);
+        const nextValue = before + prefix + selectedText + suffix + after;
 
         noticeMessageInput.value = nextValue;
         noticeMessageInput.focus();
-        const selectionStart = start + prefix.length;
+        const selectionStart = before.length + prefix.length;
         const selectionEnd = selectionStart + selectedText.length;
         noticeMessageInput.setSelectionRange(selectionStart, selectionEnd);
-    }
-
-    function insertNoticeText(insertText) {
-        if (!noticeMessageInput) {
-            return;
-        }
-
-        const start = noticeMessageInput.selectionStart ?? 0;
-        const end = noticeMessageInput.selectionEnd ?? 0;
-        const nextValue =
-            noticeMessageInput.value.slice(0, start) +
-            insertText +
-            noticeMessageInput.value.slice(end);
-
-        noticeMessageInput.value = nextValue;
-        noticeMessageInput.focus();
-        const cursor = start + insertText.length;
-        noticeMessageInput.setSelectionRange(cursor, cursor);
-    }
-
-    function insertNoticeLink() {
-        if (!noticeMessageInput) {
-            return;
-        }
-
-        const start = noticeMessageInput.selectionStart ?? 0;
-        const end = noticeMessageInput.selectionEnd ?? 0;
-        const selectedText = noticeMessageInput.value.slice(start, end).trim();
-        const linkText = window.prompt(
-            "링크에 표시할 문구를 입력해 주세요.",
-            selectedText || "자세히 보기"
-        );
-
-        if (linkText === null) {
-            return;
-        }
-
-        const normalizedLinkText = linkText.trim() || "자세히 보기";
-        const linkUrl = window.prompt(
-            "이동할 주소를 입력해 주세요.",
-            "https://"
-        );
-
-        if (linkUrl === null) {
-            return;
-        }
-
-        const normalizedLinkUrl = linkUrl.trim();
-        if (!normalizedLinkUrl) {
-            window.alert("링크 주소를 입력해 주세요.");
-            return;
-        }
-
-        const nextValue =
-            noticeMessageInput.value.slice(0, start) +
-            `[${normalizedLinkText}](${normalizedLinkUrl})` +
-            noticeMessageInput.value.slice(end);
-
-        noticeMessageInput.value = nextValue;
-        noticeMessageInput.focus();
-        const cursor = start + normalizedLinkText.length + normalizedLinkUrl.length + 4;
-        noticeMessageInput.setSelectionRange(cursor, cursor);
-    }
-
-    function insertNoticeColor() {
-        if (!noticeMessageInput) {
-            return;
-        }
-
-        const start = noticeMessageInput.selectionStart ?? 0;
-        const end = noticeMessageInput.selectionEnd ?? 0;
-        const selectedText = noticeMessageInput.value.slice(start, end).trim();
-        const colorValue = window.prompt(
-            "색상 코드를 입력해 주세요. 예: #1463ff 또는 red",
-            "#1463ff"
-        );
-
-        if (colorValue === null) {
-            return;
-        }
-
-        const normalizedColorValue = colorValue.trim();
-        if (!normalizedColorValue) {
-            window.alert("색상 코드를 입력해 주세요.");
-            return;
-        }
-
-        const content = selectedText || "색상 문구";
-        const snippet = `{color:${normalizedColorValue}}${content}{/color}`;
-        const nextValue =
-            noticeMessageInput.value.slice(0, start) +
-            snippet +
-            noticeMessageInput.value.slice(end);
-
-        noticeMessageInput.value = nextValue;
-        noticeMessageInput.focus();
-        const cursor = start + snippet.length;
-        noticeMessageInput.setSelectionRange(cursor, cursor);
     }
 
     editorButtons.forEach((button) => {
         button.addEventListener("click", () => {
             const action = button.dataset.editorAction;
-
             if (action === "heading") {
-                insertNoticeText("## 제목을 입력해 주세요\n");
-                return;
-            }
-
-            if (action === "bold") {
+                wrapNoticeSelection("## ", "", "제목");
+            } else if (action === "bold") {
                 wrapNoticeSelection("**", "**", "강조 문구");
-                return;
-            }
-
-            if (action === "bullet") {
-                insertNoticeText("- 항목을 입력해 주세요\n");
-                return;
-            }
-
-            if (action === "color") {
-                insertNoticeColor();
-                return;
-            }
-
-            if (action === "link") {
-                insertNoticeLink();
+            } else if (action === "bullet") {
+                wrapNoticeSelection("- ", "", "공지 항목");
+            } else if (action === "color") {
+                wrapNoticeSelection("{color:#0f766e}", "{/color}", "강조 색상 문구");
+            } else if (action === "link") {
+                wrapNoticeSelection("[링크 문구](", "https://example.com)", "https://example.com");
             }
         });
     });

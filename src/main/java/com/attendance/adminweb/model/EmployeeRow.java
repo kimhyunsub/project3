@@ -4,6 +4,7 @@ public record EmployeeRow(
         Long id,
         String employeeCode,
         String name,
+        String workplaceName,
         String role,
         String workStartTime,
         String workEndTime,

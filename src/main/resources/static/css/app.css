@@ -315,25 +315,29 @@ table {
 }
 
 .employees-table th:nth-child(3) {
-    width: 96px;
+    width: 124px;
 }
 
 .employees-table th:nth-child(4) {
+    width: 96px;
+}
+
+.employees-table th:nth-child(5) {
     width: 132px;
 }
 
-.employees-table th:nth-child(5),
-.employees-table th:nth-child(6) {
+.employees-table th:nth-child(6),
+.employees-table th:nth-child(7) {
     width: 110px;
 }
 
-.employees-table th:nth-child(7),
-.employees-table th:nth-child(8) {
+.employees-table th:nth-child(8),
+.employees-table th:nth-child(9) {
     width: 104px;
 }
 
-.employees-table th:nth-child(9) {
-    width: 260px;
+.employees-table th:nth-child(10) {
+    width: 250px;
 }
 
 th,
@@ -342,6 +346,12 @@ td {
     padding: 16px 12px;
     border-bottom: 1px solid var(--line);
     font-size: 14px;
+}
+
+.compact-table th,
+.compact-table td {
+    padding: 11px 10px;
+    font-size: 13px;
 }
 
 th {
@@ -386,10 +396,39 @@ th {
 }
 
 .emphasis-time {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 800;
     letter-spacing: -0.02em;
     color: var(--text);
+}
+
+.company-cell {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.location-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.location-tabs a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    border-radius: 999px;
+    padding: 8px 16px;
+    background: rgba(15, 118, 110, 0.08);
+    color: var(--primary-dark);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.location-tabs a.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
 }
 
 .schedule-cell {
@@ -489,6 +528,10 @@ th {
     overflow: hidden;
     border: 1px solid var(--line);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
+.compact-settings-form {
+    margin-top: 0;
 }
 
 .alert {
@@ -635,6 +678,36 @@ th {
 .small-link {
     min-height: 36px;
     padding: 6px 12px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.list-summary,
+.pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.list-summary {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.pagination-bar {
+    margin-top: 14px;
+}
+
+.pagination-current {
+    color: var(--neutral-text);
+    font-size: 13px;
+    font-weight: 800;
 }
 
 @media (max-width: 1024px) {

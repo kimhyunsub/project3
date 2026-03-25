@@ -6,22 +6,28 @@ import com.attendance.adminweb.domain.entity.Company;
 import com.attendance.adminweb.domain.entity.CompanySetting;
 import com.attendance.adminweb.domain.entity.Employee;
 import com.attendance.adminweb.domain.entity.EmployeeRole;
+import com.attendance.adminweb.domain.entity.Workplace;
 import com.attendance.adminweb.domain.repository.AttendanceRecordRepository;
 import com.attendance.adminweb.domain.repository.CompanyRepository;
 import com.attendance.adminweb.domain.repository.CompanySettingRepository;
 import com.attendance.adminweb.domain.repository.EmployeeRepository;
+import com.attendance.adminweb.domain.repository.WorkplaceRepository;
 import com.attendance.adminweb.model.AttendanceRow;
 import com.attendance.adminweb.model.AttendanceState;
 import com.attendance.adminweb.model.CompanyLocationForm;
 import com.attendance.adminweb.model.CompanyLocationView;
 import com.attendance.adminweb.model.DashboardSummary;
 import com.attendance.adminweb.model.EmployeeForm;
+import com.attendance.adminweb.model.EmployeePage;
 import com.attendance.adminweb.model.EmployeeRow;
 import com.attendance.adminweb.model.EmployeeUploadResult;
 import com.attendance.adminweb.model.MonthlyAttendanceEmployeeDetailRow;
 import com.attendance.adminweb.model.MonthlyAttendanceEmployeeRow;
 import com.attendance.adminweb.model.MonthlyAttendanceRecordRow;
 import com.attendance.adminweb.model.MonthlyAttendanceSummary;
+import com.attendance.adminweb.model.WorkplaceLocationForm;
+import com.attendance.adminweb.model.WorkplaceLocationView;
+import com.attendance.adminweb.model.WorkplaceOption;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -68,17 +74,20 @@ public class AdminService {
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final CompanyRepository companyRepository;
     private final CompanySettingRepository companySettingRepository;
+    private final WorkplaceRepository workplaceRepository;
     private final PasswordEncoder passwordEncoder;
 
     public AdminService(EmployeeRepository employeeRepository,
                         AttendanceRecordRepository attendanceRecordRepository,
                         CompanyRepository companyRepository,
                         CompanySettingRepository companySettingRepository,
+                        WorkplaceRepository workplaceRepository,
                         PasswordEncoder passwordEncoder) {
         this.employeeRepository = employeeRepository;
         this.attendanceRecordRepository = attendanceRecordRepository;
         this.companyRepository = companyRepository;
         this.companySettingRepository = companySettingRepository;
+        this.workplaceRepository = workplaceRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -336,17 +345,18 @@ public class AdminService {
         }
     }
 
-    public List<EmployeeRow> getEmployees(String employeeCode, boolean showDeleted) {
+    public EmployeePage getEmployees(String employeeCode, boolean showDeleted, int page, int pageSize) {
         List<Employee> employees = getEmployeeList(employeeCode, showDeleted);
         Map<Long, AttendanceRecord> recordsByEmployeeId = getTodayRecordsByEmployee(employees);
 
-        return employees.stream()
+        List<EmployeeRow> employeeRows = employees.stream()
                 .map(employee -> {
                     AttendanceRecord record = recordsByEmployeeId.get(employee.getId());
                     return new EmployeeRow(
                             employee.getId(),
                             employee.getEmployeeCode(),
                             employee.getName(),
+                            employee.getWorkplace() == null ? "본사" : employee.getWorkplace().getName(),
                             employee.getRole().name(),
                             formatScheduleTime(employee.getWorkStartTime()),
                             formatScheduleTime(employee.getWorkEndTime()),
@@ -359,12 +369,30 @@ public class AdminService {
                     );
                 })
                 .toList();
+
+        int normalizedPageSize = Math.max(pageSize, 1);
+        int totalCount = employeeRows.size();
+        int totalPages = totalCount == 0 ? 1 : (int) Math.ceil((double) totalCount / normalizedPageSize);
+        int currentPage = Math.min(Math.max(page, 1), totalPages);
+        int fromIndex = Math.min((currentPage - 1) * normalizedPageSize, totalCount);
+        int toIndex = Math.min(fromIndex + normalizedPageSize, totalCount);
+
+        return new EmployeePage(
+                employeeRows.subList(fromIndex, toIndex),
+                currentPage,
+                totalPages,
+                totalCount,
+                normalizedPageSize,
+                currentPage > 1,
+                currentPage < totalPages
+        );
     }
 
     public EmployeeForm getEmployeeFormForCreate() {
         EmployeeForm form = new EmployeeForm();
         form.setRole(EmployeeRole.EMPLOYEE.name());
         form.setPassword("");
+        form.setWorkplaceId(null);
         return form;
     }
 
@@ -442,6 +470,36 @@ public class AdminService {
         );
     }
 
+    public List<WorkplaceLocationView> getWorkplaces(String employeeCode) {
+        Employee admin = getEmployeeByCode(employeeCode);
+        return workplaceRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId()).stream()
+                .map(workplace -> new WorkplaceLocationView(
+                        workplace.getId(),
+                        workplace.getName(),
+                        workplace.getLatitude(),
+                        workplace.getLongitude(),
+                        workplace.getAllowedRadiusMeters()
+                ))
+                .toList();
+    }
+
+    public List<WorkplaceOption> getWorkplaceOptions(String employeeCode) {
+        Employee admin = getEmployeeByCode(employeeCode);
+        return workplaceRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId()).stream()
+                .map(workplace -> new WorkplaceOption(workplace.getId(), workplace.getName()))
+                .toList();
+    }
+
+    public WorkplaceLocationForm getWorkplaceLocationForm(String employeeCode, Long workplaceId) {
+        Workplace workplace = getWorkplace(employeeCode, workplaceId);
+        WorkplaceLocationForm form = new WorkplaceLocationForm();
+        form.setName(workplace.getName());
+        form.setLatitude(workplace.getLatitude());
+        form.setLongitude(workplace.getLongitude());
+        form.setAllowedRadiusMeters(workplace.getAllowedRadiusMeters());
+        return form;
+    }
+
     public CompanyLocationForm getCompanyLocationForm(String employeeCode) {
         CompanyLocationView location = getCompanyLocation(employeeCode);
         CompanyLocationForm form = new CompanyLocationForm();
@@ -471,9 +529,33 @@ public class AdminService {
     }
 
     @Transactional
+    public void createWorkplace(String employeeCode, WorkplaceLocationForm form) {
+        Employee admin = getEmployeeByCode(employeeCode);
+        workplaceRepository.save(new Workplace(
+                admin.getCompany(),
+                form.getName().trim(),
+                form.getLatitude(),
+                form.getLongitude(),
+                form.getAllowedRadiusMeters()
+        ));
+    }
+
+    @Transactional
+    public void updateWorkplace(String employeeCode, Long workplaceId, WorkplaceLocationForm form) {
+        Workplace workplace = getWorkplace(employeeCode, workplaceId);
+        workplace.update(
+                form.getName().trim(),
+                form.getLatitude(),
+                form.getLongitude(),
+                form.getAllowedRadiusMeters()
+        );
+    }
+
+    @Transactional
     public void createEmployee(String adminEmployeeCode, EmployeeForm form) {
         Employee admin = getEmployeeByCode(adminEmployeeCode);
         validateDuplicateEmployeeCode(form.getEmployeeCode(), null);
+        Workplace workplace = resolveWorkplace(admin, form.getWorkplaceId());
 
         Employee employee = new Employee(
                 form.getEmployeeCode().trim(),
@@ -481,6 +563,7 @@ public class AdminService {
                 passwordEncoder.encode(form.getPassword()),
                 form.getEmployeeRole(),
                 admin.getCompany(),
+                workplace,
                 parseOptionalTime(form.getWorkStartTime(), "출근 기준 시간"),
                 parseOptionalTime(form.getWorkEndTime(), "퇴근 기준 시간")
         );
@@ -495,11 +578,13 @@ public class AdminService {
             throw new IllegalArgumentException("삭제된 직원은 수정할 수 없습니다. 먼저 복구해 주세요.");
         }
         validateDuplicateEmployeeCode(form.getEmployeeCode(), employeeId);
+        Workplace workplace = resolveWorkplace(employee, form.getWorkplaceId());
 
         employee.updateProfile(
                 form.getEmployeeCode().trim(),
                 form.getName().trim(),
                 form.getEmployeeRole(),
+                workplace,
                 parseOptionalTime(form.getWorkStartTime(), "출근 기준 시간"),
                 parseOptionalTime(form.getWorkEndTime(), "퇴근 기준 시간")
         );
@@ -654,6 +739,21 @@ public class AdminService {
         }
 
         return employee;
+    }
+
+    private Workplace getWorkplace(String employeeCode, Long workplaceId) {
+        Employee admin = getEmployeeByCode(employeeCode);
+        return workplaceRepository.findByIdAndCompanyId(workplaceId, admin.getCompany().getId())
+                .orElseThrow(() -> new EntityNotFoundException("사업장을 찾을 수 없습니다."));
+    }
+
+    private Workplace resolveWorkplace(Employee employee, Long workplaceId) {
+        if (workplaceId == null) {
+            return null;
+        }
+
+        return workplaceRepository.findByIdAndCompanyId(workplaceId, employee.getCompany().getId())
+                .orElseThrow(() -> new IllegalArgumentException("같은 회사 소속 사업장만 선택할 수 있습니다."));
     }
 
     private void validateDuplicateEmployeeCode(String employeeCode, Long employeeId) {

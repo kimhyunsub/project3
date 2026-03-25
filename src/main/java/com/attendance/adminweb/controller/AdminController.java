@@ -1,8 +1,10 @@
 package com.attendance.adminweb.controller;
 
 import com.attendance.adminweb.model.CompanyLocationForm;
+import com.attendance.adminweb.model.EmployeePage;
 import com.attendance.adminweb.model.EmployeeForm;
 import com.attendance.adminweb.model.EmployeeUploadResult;
+import com.attendance.adminweb.model.WorkplaceLocationForm;
 import com.attendance.adminweb.service.AdminService;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 public class AdminController {
+    private static final int EMPLOYEE_PAGE_SIZE = 12;
 
     private final AdminService adminService;
 
@@ -100,11 +103,21 @@ public class AdminController {
 
     @GetMapping("/employees")
     public String employees(@RequestParam(required = false) Long editId,
+                            @RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "false") boolean showDeleted,
                             Model model,
                             Principal principal) {
-        model.addAttribute("employees", adminService.getEmployees(principal.getName(), showDeleted));
+        EmployeePage employeePage = adminService.getEmployees(principal.getName(), showDeleted, page, EMPLOYEE_PAGE_SIZE);
+        model.addAttribute("employees", employeePage.employees());
+        model.addAttribute("currentPage", employeePage.currentPage());
+        model.addAttribute("totalPages", employeePage.totalPages());
+        model.addAttribute("totalCount", employeePage.totalCount());
+        model.addAttribute("pageSize", employeePage.pageSize());
+        model.addAttribute("hasPreviousPage", employeePage.hasPrevious());
+        model.addAttribute("hasNextPage", employeePage.hasNext());
+        model.addAttribute("editId", editId);
         model.addAttribute("showDeleted", showDeleted);
+        model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
         if (!model.containsAttribute("employeeForm")) {
             model.addAttribute("employeeForm", editId == null
                     ? adminService.getEmployeeFormForCreate()
@@ -129,11 +142,21 @@ public class AdminController {
     }
 
     @GetMapping("/settings/location")
-    public String companyLocation(Model model, Principal principal) {
+    public String companyLocation(@RequestParam(required = false) Long workplaceId, Model model, Principal principal) {
         if (!model.containsAttribute("locationForm")) {
             model.addAttribute("locationForm", adminService.getCompanyLocationForm(principal.getName()));
         }
+        if (!model.containsAttribute("workplaceForm")) {
+            model.addAttribute("workplaceForm", workplaceId == null
+                    ? new WorkplaceLocationForm()
+                    : adminService.getWorkplaceLocationForm(principal.getName(), workplaceId));
+        }
+        if (!model.containsAttribute("newWorkplaceForm")) {
+            model.addAttribute("newWorkplaceForm", new WorkplaceLocationForm());
+        }
         model.addAttribute("location", adminService.getCompanyLocation(principal.getName()));
+        model.addAttribute("workplaces", adminService.getWorkplaces(principal.getName()));
+        model.addAttribute("selectedWorkplaceId", workplaceId);
         return "location-settings";
     }
 
@@ -151,6 +174,49 @@ public class AdminController {
         adminService.updateCompanyLocation(principal.getName(), form);
         redirectAttributes.addFlashAttribute("message", "회사 위치가 저장되었습니다.");
         return "redirect:/settings/location";
+    }
+
+    @PostMapping("/settings/location/workplaces")
+    public String createWorkplace(@Valid @ModelAttribute("newWorkplaceForm") WorkplaceLocationForm form,
+                                  BindingResult bindingResult,
+                                  RedirectAttributes redirectAttributes,
+                                  Principal principal) {
+        if (bindingResult.hasErrors()) {
+            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.newWorkplaceForm", bindingResult);
+            redirectAttributes.addFlashAttribute("newWorkplaceForm", form);
+            return "redirect:/settings/location";
+        }
+
+        try {
+            adminService.createWorkplace(principal.getName(), form);
+            redirectAttributes.addFlashAttribute("message", "사업장이 추가되었습니다.");
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("newWorkplaceForm", form);
+        }
+        return "redirect:/settings/location";
+    }
+
+    @PostMapping("/settings/location/workplaces/{workplaceId}")
+    public String updateWorkplace(@PathVariable Long workplaceId,
+                                  @Valid @ModelAttribute("workplaceForm") WorkplaceLocationForm form,
+                                  BindingResult bindingResult,
+                                  RedirectAttributes redirectAttributes,
+                                  Principal principal) {
+        if (bindingResult.hasErrors()) {
+            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.workplaceForm", bindingResult);
+            redirectAttributes.addFlashAttribute("workplaceForm", form);
+            return "redirect:/settings/location?workplaceId=" + workplaceId;
+        }
+
+        try {
+            adminService.updateWorkplace(principal.getName(), workplaceId, form);
+            redirectAttributes.addFlashAttribute("message", "사업장 위치가 저장되었습니다.");
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("workplaceForm", form);
+        }
+        return "redirect:/settings/location?workplaceId=" + workplaceId;
     }
 
     @PostMapping("/employees")
@@ -233,6 +299,7 @@ public class AdminController {
     @PostMapping("/employees/{employeeId}/usage")
     public String updateEmployeeUsage(@PathVariable Long employeeId,
                                       @RequestParam boolean active,
+                                      @RequestParam(defaultValue = "1") int page,
                                       @RequestParam(defaultValue = "false") boolean showDeleted,
                                       RedirectAttributes redirectAttributes,
                                       Principal principal) {
@@ -242,11 +309,12 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees" + (showDeleted ? "?showDeleted=true" : "");
+        return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
     }
 
     @PostMapping("/employees/{employeeId}/delete")
     public String deleteEmployee(@PathVariable Long employeeId,
+                                 @RequestParam(defaultValue = "1") int page,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         try {
@@ -255,11 +323,12 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees";
+        return "redirect:/employees?page=" + page;
     }
 
     @PostMapping("/employees/{employeeId}/restore")
     public String restoreEmployee(@PathVariable Long employeeId,
+                                  @RequestParam(defaultValue = "1") int page,
                                   RedirectAttributes redirectAttributes,
                                   Principal principal) {
         try {
@@ -268,11 +337,12 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees?showDeleted=true";
+        return "redirect:/employees?showDeleted=true&page=" + page;
     }
 
     @PostMapping("/employees/{employeeId}/device-reset")
     public String resetEmployeeDevice(@PathVariable Long employeeId,
+                                      @RequestParam(defaultValue = "1") int page,
                                       @RequestParam(defaultValue = "false") boolean showDeleted,
                                       RedirectAttributes redirectAttributes,
                                       Principal principal) {
@@ -282,7 +352,7 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees" + (showDeleted ? "?showDeleted=true" : "");
+        return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
     }
 
     private void validateCreateEmployeeForm(EmployeeForm form, BindingResult bindingResult) {
