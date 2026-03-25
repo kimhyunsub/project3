@@ -6,7 +6,7 @@
     <title>월별 출근 현황</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body>
+<body th:classappend="${selectedEmployeeDetail != null} ? ' modal-open' : ''">
 <div class="app-shell">
     <aside class="sidebar">
         <div>
@@ -165,54 +165,7 @@
                 선택한 직원의 월간 출근 상세 내역이 없습니다.
             </div>
             <div class="employee-detail-grid" th:if="${selectedEmployeeDetail != null}">
-                <article class="employee-detail-card" th:with="detail=${selectedEmployeeDetail}">
-                    <div class="employee-detail-header">
-                        <div>
-                            <h3>
-                                <span th:text="${detail.employeeName()}">홍길동</span>
-                                <small th:text="${detail.employeeCode()}">EMP001</small>
-                            </h3>
-                            <p>
-                                <span th:text="${detail.workplaceName()}">본사</span>
-                                <span> · </span>
-                                <span th:text="${detail.role()}">EMPLOYEE</span>
-                            </p>
-                        </div>
-                        <div class="employee-detail-metrics">
-                            <span class="pill neutral" th:text="'출근 ' + ${detail.attendanceDays()} + '일'">출근 0일</span>
-                            <span class="pill warning" th:text="'지각 ' + ${detail.lateDays()} + '일'">지각 0일</span>
-                            <span class="pill success" th:text="'퇴근완료 ' + ${detail.checkedOutDays()} + '일'">퇴근완료 0일</span>
-                        </div>
-                    </div>
-                    <table class="detail-table">
-                        <thead>
-                        <tr>
-                            <th>날짜</th>
-                            <th>상태</th>
-                            <th>출근 시간</th>
-                            <th>퇴근 시간</th>
-                            <th>메모</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="record : ${detail.records()}">
-                            <td th:text="${record.attendanceDate()}">2026.03.22</td>
-                            <td>
-                                <span class="pill"
-                                      th:text="${record.state().label}"
-                                      th:classappend="${record.state().name() == 'WORKING'} ? ' success' :
-                                                      (${record.state().name() == 'LATE'} ? ' warning' :
-                                                      (${record.state().name() == 'ABSENT'} ? ' danger' : ' neutral'))">
-                                    상태
-                                </span>
-                            </td>
-                            <td th:text="${record.checkInTime()}">09:00</td>
-                            <td th:text="${record.checkOutTime()}">18:00</td>
-                            <td th:text="${record.note()}">메모</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </article>
+                <div class="empty-state">상세 내역이 레이어 팝업으로 열려 있습니다.</div>
             </div>
         </section>
 
@@ -224,14 +177,83 @@
             <div class="empty-state" th:if="${#lists.isEmpty(monthlyAttendances)}">
                 선택한 월의 출근 기록이 아직 없습니다.
             </div>
-            <table th:if="${!#lists.isEmpty(monthlyAttendances)}">
+            <div class="monthly-records-scroll" th:if="${!#lists.isEmpty(monthlyAttendances)}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>날짜</th>
+                        <th>사번</th>
+                        <th>이름</th>
+                        <th>사업장</th>
+                        <th>권한</th>
+                        <th>상태</th>
+                        <th>출근 시간</th>
+                        <th>퇴근 시간</th>
+                        <th>메모</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="record : ${monthlyAttendances}">
+                        <td th:text="${record.attendanceDate()}">2026.03.22</td>
+                        <td th:text="${record.employeeCode()}">EMP001</td>
+                        <td th:text="${record.employeeName()}">홍길동</td>
+                        <td th:text="${record.workplaceName()}">본사</td>
+                        <td th:text="${record.role()}">EMPLOYEE</td>
+                        <td>
+                            <span class="pill"
+                                  th:text="${record.state().label}"
+                                  th:classappend="${record.state().name() == 'WORKING'} ? ' success' :
+                                                  (${record.state().name() == 'LATE'} ? ' warning' :
+                                                  (${record.state().name() == 'ABSENT'} ? ' danger' : ' neutral'))">
+                                상태
+                            </span>
+                        </td>
+                        <td th:text="${record.checkInTime()}">09:00</td>
+                        <td th:text="${record.checkOutTime()}">18:00</td>
+                        <td th:text="${record.note()}">메모</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="modal-sheet employee-detail-modal" th:if="${selectedEmployeeDetail != null}">
+    <article class="employee-detail-card employee-detail-modal-card" th:with="detail=${selectedEmployeeDetail}">
+        <div class="panel-header employee-detail-modal-header">
+            <div>
+                <div class="eyebrow">Attendance Detail</div>
+                <h2>직원별 월간 출근 상세</h2>
+            </div>
+            <a class="ghost-link"
+               th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, workplaceId=${selectedWorkplaceId})}">
+                닫기
+            </a>
+        </div>
+        <div class="employee-detail-header">
+            <div>
+                <h3>
+                    <span th:text="${detail.employeeName()}">홍길동</span>
+                    <small th:text="${detail.employeeCode()}">EMP001</small>
+                </h3>
+                <p>
+                    <span th:text="${detail.workplaceName()}">본사</span>
+                    <span> · </span>
+                    <span th:text="${detail.role()}">EMPLOYEE</span>
+                </p>
+            </div>
+            <div class="employee-detail-metrics">
+                <span class="pill neutral" th:text="'출근 ' + ${detail.attendanceDays()} + '일'">출근 0일</span>
+                <span class="pill warning" th:text="'지각 ' + ${detail.lateDays()} + '일'">지각 0일</span>
+                <span class="pill success" th:text="'퇴근완료 ' + ${detail.checkedOutDays()} + '일'">퇴근완료 0일</span>
+            </div>
+        </div>
+        <div class="modal-table-scroll">
+            <table class="detail-table">
                 <thead>
                 <tr>
                     <th>날짜</th>
-                    <th>사번</th>
-                    <th>이름</th>
-                    <th>사업장</th>
-                    <th>권한</th>
                     <th>상태</th>
                     <th>출근 시간</th>
                     <th>퇴근 시간</th>
@@ -239,12 +261,8 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="record : ${monthlyAttendances}">
+                <tr th:each="record : ${detail.records()}">
                     <td th:text="${record.attendanceDate()}">2026.03.22</td>
-                    <td th:text="${record.employeeCode()}">EMP001</td>
-                    <td th:text="${record.employeeName()}">홍길동</td>
-                    <td th:text="${record.workplaceName()}">본사</td>
-                    <td th:text="${record.role()}">EMPLOYEE</td>
                     <td>
                         <span class="pill"
                               th:text="${record.state().label}"
@@ -260,8 +278,8 @@
                 </tr>
                 </tbody>
             </table>
-        </section>
-    </main>
+        </div>
+    </article>
 </div>
 </body>
 </html>

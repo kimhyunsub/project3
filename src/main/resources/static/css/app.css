@@ -211,8 +211,12 @@ textarea:focus {
     padding: 32px 24px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 24px;
+}
+
+.sidebar form {
+    margin-top: auto;
 }
 
 .nav-menu {
@@ -590,6 +594,38 @@ th {
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), #ffffff);
 }
 
+.modal-sheet {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    z-index: 50;
+}
+
+.employee-detail-modal-card {
+    width: min(880px, calc(100vw - 40px));
+    max-height: calc(100vh - 56px);
+    overflow: hidden;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
+}
+
+.employee-detail-modal-header {
+    margin-bottom: 12px;
+}
+
+.modal-table-scroll {
+    max-height: calc(100vh - 280px);
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.monthly-records-scroll {
+    max-height: min(52vh, 460px);
+    overflow: auto;
+    padding-right: 4px;
+}
+
 .employee-detail-header {
     display: flex;
     justify-content: space-between;
@@ -710,6 +746,36 @@ th {
     font-weight: 800;
 }
 
+body.modal-open {
+    overflow: hidden;
+}
+
+body.modal-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(4px);
+    z-index: 40;
+}
+
+.employee-editor-panel {
+    position: relative;
+}
+
+body.modal-open .employee-editor-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(760px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    z-index: 50;
+    margin: 0;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
+}
+
 @media (max-width: 1024px) {
     .app-shell {
         grid-template-columns: 1fr;
@@ -752,6 +818,24 @@ th {
 
     .employee-detail-header {
         flex-direction: column;
+    }
+
+    body.modal-open .employee-editor-panel {
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+    }
+
+    .employee-detail-modal-card {
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+    }
+
+    .modal-table-scroll {
+        max-height: calc(100vh - 240px);
+    }
+
+    .monthly-records-scroll {
+        max-height: 50vh;
     }
 
     table,

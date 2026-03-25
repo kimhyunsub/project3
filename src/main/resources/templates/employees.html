@@ -6,7 +6,7 @@
     <title>직원 목록</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body>
+<body th:classappend="${editing} ? ' modal-open' : ''">
 <div class="app-shell">
     <aside class="sidebar">
         <div>
@@ -185,7 +185,7 @@
             </div>
         </section>
 
-        <section class="panel">
+        <section class="panel employee-editor-panel">
             <div class="panel-header">
                 <h2 th:text="${editing} ? '직원 수정' : '직원 등록'">직원 등록</h2>
                 <span class="pill neutral" th:text="${editing} ? '수정 모드' : '신규 모드'">신규 모드</span>
