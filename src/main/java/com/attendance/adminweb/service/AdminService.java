@@ -494,7 +494,7 @@ public class AdminService {
 
     public List<WorkplaceLocationView> getWorkplaces(String employeeCode) {
         Employee admin = getEmployeeByCode(employeeCode);
-        return workplaceRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId()).stream()
+        return getAccessibleWorkplaces(admin).stream()
                 .map(workplace -> new WorkplaceLocationView(
                         workplace.getId(),
                         workplace.getName(),
@@ -508,7 +508,7 @@ public class AdminService {
 
     public List<WorkplaceOption> getWorkplaceOptions(String employeeCode) {
         Employee admin = getEmployeeByCode(employeeCode);
-        return workplaceRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId()).stream()
+        return getAccessibleWorkplaces(admin).stream()
                 .map(workplace -> new WorkplaceOption(workplace.getId(), workplace.getName()))
                 .toList();
     }
@@ -525,6 +525,7 @@ public class AdminService {
     }
 
     public CompanyLocationForm getCompanyLocationForm(String employeeCode) {
+        ensureCompanyScopeAllowed(getEmployeeByCode(employeeCode));
         CompanyLocationView location = getCompanyLocation(employeeCode);
         CompanyLocationForm form = new CompanyLocationForm();
         form.setCompanyName(location.companyName());
@@ -540,6 +541,7 @@ public class AdminService {
     @Transactional
     public void updateCompanyLocation(String employeeCode, CompanyLocationForm form) {
         Employee admin = getEmployeeByCode(employeeCode);
+        ensureCompanyScopeAllowed(admin);
         Company company = companyRepository.findById(admin.getCompany().getId())
                 .orElseThrow(() -> new EntityNotFoundException("회사를 찾을 수 없습니다."));
         CompanySetting setting = companySettingRepository.findByCompany(company)
@@ -555,6 +557,7 @@ public class AdminService {
     @Transactional
     public void createWorkplace(String employeeCode, WorkplaceLocationForm form) {
         Employee admin = getEmployeeByCode(employeeCode);
+        ensureCompanyScopeAllowed(admin);
         workplaceRepository.save(new Workplace(
                 admin.getCompany(),
                 form.getName().trim(),
@@ -580,8 +583,9 @@ public class AdminService {
     @Transactional
     public void createEmployee(String adminEmployeeCode, EmployeeForm form) {
         Employee admin = getEmployeeByCode(adminEmployeeCode);
+        validateRoleAssignment(admin, form.getEmployeeRole(), form.getWorkplaceId());
         validateDuplicateEmployeeCode(form.getEmployeeCode(), null);
-        Workplace workplace = resolveWorkplace(admin, form.getWorkplaceId());
+        Workplace workplace = resolveManagedWorkplace(admin, form.getWorkplaceId());
 
         Employee employee = new Employee(
                 form.getEmployeeCode().trim(),
@@ -599,12 +603,14 @@ public class AdminService {
 
     @Transactional
     public void updateEmployee(String adminEmployeeCode, Long employeeId, EmployeeForm form) {
+        Employee admin = getEmployeeByCode(adminEmployeeCode);
         Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
         if (employee.isDeleted()) {
             throw new IllegalArgumentException("삭제된 직원은 수정할 수 없습니다. 먼저 복구해 주세요.");
         }
+        validateRoleAssignment(admin, form.getEmployeeRole(), form.getWorkplaceId());
         validateDuplicateEmployeeCode(form.getEmployeeCode(), employeeId);
-        Workplace workplace = resolveWorkplace(employee, form.getWorkplaceId());
+        Workplace workplace = resolveManagedWorkplace(admin, form.getWorkplaceId());
 
         employee.updateProfile(
                 form.getEmployeeCode().trim(),
@@ -718,7 +724,8 @@ public class AdminService {
 
                 try {
                     validateUploadRow(rowIndex + 1, employeeCode, name, roleValue, password, workplaceName, workStartTime, workEndTime, existingCodes);
-                    Workplace workplace = resolveUploadWorkplace(rowIndex + 1, workplaceName, workplacesByName);
+                    validateUploadRole(admin, rowIndex + 1, roleValue);
+                    Workplace workplace = resolveUploadWorkplace(admin, rowIndex + 1, workplaceName, workplacesByName);
                     Employee employee = new Employee(
                             employeeCode,
                             name,
@@ -752,7 +759,8 @@ public class AdminService {
     }
 
     private List<Employee> getCompanyEmployees(String employeeCode, Long workplaceId) {
-        return filterByWorkplace(getCompanyEmployees(employeeCode), workplaceId);
+        Employee admin = getEmployeeByCode(employeeCode);
+        return filterByWorkplace(getCompanyEmployees(employeeCode), resolveRequestedWorkplaceId(admin, workplaceId));
     }
 
     private List<Employee> getEmployeeList(String employeeCode, boolean showDeleted) {
@@ -764,7 +772,8 @@ public class AdminService {
     }
 
     private List<Employee> getEmployeeList(String employeeCode, boolean showDeleted, Long workplaceId) {
-        return filterByWorkplace(getEmployeeList(employeeCode, showDeleted), workplaceId);
+        Employee admin = getEmployeeByCode(employeeCode);
+        return filterByWorkplace(getEmployeeList(employeeCode, showDeleted), resolveRequestedWorkplaceId(admin, workplaceId));
     }
 
     private List<Employee> filterByWorkplace(List<Employee> employees, Long workplaceId) {
@@ -795,11 +804,21 @@ public class AdminService {
             throw new IllegalArgumentException("같은 회사 소속 직원만 관리할 수 있습니다.");
         }
 
+        if (isWorkplaceScopedAdmin(admin)) {
+            Long assignedWorkplaceId = getAssignedWorkplaceId(admin);
+            if (employee.getWorkplace() == null || !assignedWorkplaceId.equals(employee.getWorkplace().getId())) {
+                throw new IllegalArgumentException("사업장 관리자 권한으로는 본인 사업장 직원만 관리할 수 있습니다.");
+            }
+        }
+
         return employee;
     }
 
     private Workplace getWorkplace(String employeeCode, Long workplaceId) {
         Employee admin = getEmployeeByCode(employeeCode);
+        if (isWorkplaceScopedAdmin(admin) && !getAssignedWorkplaceId(admin).equals(workplaceId)) {
+            throw new IllegalArgumentException("본인 사업장만 관리할 수 있습니다.");
+        }
         return workplaceRepository.findByIdAndCompanyId(workplaceId, admin.getCompany().getId())
                 .orElseThrow(() -> new EntityNotFoundException("사업장을 찾을 수 없습니다."));
     }
@@ -813,8 +832,27 @@ public class AdminService {
                 .orElseThrow(() -> new IllegalArgumentException("같은 회사 소속 사업장만 선택할 수 있습니다."));
     }
 
+    private Workplace resolveManagedWorkplace(Employee admin, Long workplaceId) {
+        if (isWorkplaceScopedAdmin(admin)) {
+            return resolveWorkplace(admin, getAssignedWorkplaceId(admin));
+        }
+        return resolveWorkplace(admin, workplaceId);
+    }
+
     private String getWorkplaceName(Employee employee) {
         return employee.getWorkplace() == null ? "본사" : employee.getWorkplace().getName();
+    }
+
+    public boolean isWorkplaceScopedAdmin(String employeeCode) {
+        return isWorkplaceScopedAdmin(getEmployeeByCode(employeeCode));
+    }
+
+    public Long resolveRequestedWorkplaceId(String employeeCode, Long requestedWorkplaceId) {
+        return resolveRequestedWorkplaceId(getEmployeeByCode(employeeCode), requestedWorkplaceId);
+    }
+
+    public boolean canManageAdminRoles(String employeeCode) {
+        return !isWorkplaceScopedAdmin(employeeCode);
     }
 
     private void validateDuplicateEmployeeCode(String employeeCode, Long employeeId) {
@@ -855,8 +893,8 @@ public class AdminService {
         if (roleValue.isBlank()) {
             throw new IllegalArgumentException(rowNumber + "행: 권한을 입력해 주세요.");
         }
-        if (!roleValue.equals("ADMIN") && !roleValue.equals("EMPLOYEE")) {
-            throw new IllegalArgumentException(rowNumber + "행: 권한은 ADMIN 또는 EMPLOYEE만 사용할 수 있습니다.");
+        if (!roleValue.equals("ADMIN") && !roleValue.equals("WORKPLACE_ADMIN") && !roleValue.equals("EMPLOYEE")) {
+            throw new IllegalArgumentException(rowNumber + "행: 권한은 ADMIN, WORKPLACE_ADMIN 또는 EMPLOYEE만 사용할 수 있습니다.");
         }
         if (password.isBlank()) {
             throw new IllegalArgumentException(rowNumber + "행: 비밀번호를 입력해 주세요.");
@@ -871,9 +909,17 @@ public class AdminService {
         parseOptionalTime(workEndTime, rowNumber + "행 퇴근 기준 시간");
     }
 
-    private Workplace resolveUploadWorkplace(int rowNumber,
+    private Workplace resolveUploadWorkplace(Employee admin,
+                                             int rowNumber,
                                              String workplaceName,
                                              Map<String, Workplace> workplacesByName) {
+        if (isWorkplaceScopedAdmin(admin)) {
+            if (workplaceName != null && !workplaceName.isBlank()
+                    && !admin.getWorkplace().getName().equals(workplaceName.trim())) {
+                throw new IllegalArgumentException(rowNumber + "행: 사업장 관리자 권한으로는 본인 사업장 직원만 등록할 수 있습니다.");
+            }
+            return admin.getWorkplace();
+        }
         if (workplaceName == null || workplaceName.isBlank()) {
             return null;
         }
@@ -883,6 +929,58 @@ public class AdminService {
             throw new IllegalArgumentException(rowNumber + "행: 등록되지 않은 사업장입니다. (" + workplaceName + ")");
         }
         return workplace;
+    }
+
+    private Long resolveRequestedWorkplaceId(Employee admin, Long requestedWorkplaceId) {
+        if (!isWorkplaceScopedAdmin(admin)) {
+            return requestedWorkplaceId;
+        }
+        return getAssignedWorkplaceId(admin);
+    }
+
+    private boolean isWorkplaceScopedAdmin(Employee employee) {
+        return employee.getRole() == EmployeeRole.WORKPLACE_ADMIN;
+    }
+
+    private Long getAssignedWorkplaceId(Employee employee) {
+        if (employee.getWorkplace() == null) {
+            throw new IllegalStateException("사업장 관리자 계정에는 사업장 지정이 필요합니다.");
+        }
+        return employee.getWorkplace().getId();
+    }
+
+    private void ensureCompanyScopeAllowed(Employee admin) {
+        if (isWorkplaceScopedAdmin(admin)) {
+            throw new IllegalArgumentException("사업장 관리자 권한으로는 회사 전체 설정을 변경할 수 없습니다.");
+        }
+    }
+
+    private void validateRoleAssignment(Employee admin, EmployeeRole targetRole, Long workplaceId) {
+        if (targetRole == EmployeeRole.WORKPLACE_ADMIN && workplaceId == null) {
+            throw new IllegalArgumentException("사업장 관리자 계정은 사업장을 지정해야 합니다.");
+        }
+        if (!isWorkplaceScopedAdmin(admin)) {
+            return;
+        }
+        if (targetRole != EmployeeRole.EMPLOYEE) {
+            throw new IllegalArgumentException("사업장 관리자 권한으로는 일반 직원 계정만 등록하거나 수정할 수 있습니다.");
+        }
+        if (workplaceId != null && !getAssignedWorkplaceId(admin).equals(workplaceId)) {
+            throw new IllegalArgumentException("사업장 관리자 권한으로는 본인 사업장 직원만 등록하거나 수정할 수 있습니다.");
+        }
+    }
+
+    private void validateUploadRole(Employee admin, int rowNumber, String roleValue) {
+        if (isWorkplaceScopedAdmin(admin) && !roleValue.equals("EMPLOYEE")) {
+            throw new IllegalArgumentException(rowNumber + "행: 사업장 관리자 권한으로는 일반 직원만 일괄 등록할 수 있습니다.");
+        }
+    }
+
+    private List<Workplace> getAccessibleWorkplaces(Employee admin) {
+        if (isWorkplaceScopedAdmin(admin)) {
+            return List.of(getWorkplace(admin.getEmployeeCode(), getAssignedWorkplaceId(admin)));
+        }
+        return workplaceRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId());
     }
 
     private String formatRegisteredDeviceName(Employee employee) {

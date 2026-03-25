@@ -26,8 +26,8 @@ public class DatabaseUserDetailsService implements UserDetailsService {
         Employee employee = employeeRepository.findByEmployeeCode(username)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
 
-        if (employee.getRole() != EmployeeRole.ADMIN) {
-            throw new UsernameNotFoundException("관리자 계정만 로그인할 수 있습니다.");
+        if (employee.getRole() != EmployeeRole.ADMIN && employee.getRole() != EmployeeRole.WORKPLACE_ADMIN) {
+            throw new UsernameNotFoundException("관리자 권한 계정만 로그인할 수 있습니다.");
         }
 
         return new User(

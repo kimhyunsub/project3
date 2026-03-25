@@ -31,7 +31,7 @@
                 <div class="eyebrow">Monthly Report</div>
                 <h1>월별 출근 현황</h1>
             </div>
-            <p th:text="${monthlySummary.monthLabel()} + ' 출근 데이터를 직원별로 살펴볼 수 있습니다.'">
+            <p th:text="${workplaceScopedAdmin ? monthlySummary.monthLabel() + ' 담당 사업장 출근 데이터를 직원별로 살펴볼 수 있습니다.' : monthlySummary.monthLabel() + ' 출근 데이터를 직원별로 살펴볼 수 있습니다.'}">
                 월별 출근 데이터를 직원별로 살펴볼 수 있습니다.
             </p>
         </section>
@@ -59,15 +59,15 @@
                 <label>
                     사업장
                     <select name="workplaceId">
-                        <option value="">전체</option>
-                        <option value="0" th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == 0}">본사</option>
+                        <option value="" th:if="${!workplaceScopedAdmin}">전체</option>
+                        <option value="0" th:if="${!workplaceScopedAdmin}" th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == 0}">본사</option>
                         <option th:each="workplace : ${workplaceOptions}"
                                 th:value="${workplace.id()}"
                                 th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == workplace.id()}"
                                 th:text="${workplace.name()}">사업장</option>
                     </select>
                 </label>
-                <button type="submit" class="primary-button">조회하기</button>
+                <button type="submit" class="primary-button" th:if="${!workplaceScopedAdmin}">조회하기</button>
             </form>
         </section>
 

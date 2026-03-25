@@ -197,7 +197,6 @@
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <input type="hidden" name="page" th:value="${currentPage}">
                 <input type="hidden" name="showDeleted" th:value="${showDeleted}">
-                <input type="hidden" name="workplaceId" th:value="${selectedWorkplaceId}">
 
                 <div class="form-row">
                     <label>
@@ -217,14 +216,15 @@
                         권한
                         <select th:field="*{role}">
                             <option value="EMPLOYEE">EMPLOYEE</option>
-                            <option value="ADMIN">ADMIN</option>
+                            <option value="WORKPLACE_ADMIN" th:if="${canManageAdminRoles}">WORKPLACE_ADMIN</option>
+                            <option value="ADMIN" th:if="${canManageAdminRoles}">ADMIN</option>
                         </select>
                         <small class="field-error" th:if="${#fields.hasErrors('role')}" th:errors="*{role}"></small>
                     </label>
                     <label>
                         사업장
                         <select th:field="*{workplaceId}">
-                            <option th:value="${null}">본사</option>
+                            <option th:value="${null}" th:if="${!workplaceScopedAdmin}">본사</option>
                             <option th:each="workplace : ${workplaceOptions}"
                                     th:value="${workplace.id()}"
                                     th:text="${workplace.name()}">사업장</option>

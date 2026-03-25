@@ -57,7 +57,7 @@ public class SecurityConfig {
     }
 
     private String resolveFailureMessage(AuthenticationException exception) {
-        String baseMessage = "로그인에 실패했습니다. 관리자 계정은 ADMIN001 형식의 사번으로 로그인해야 합니다.";
+        String baseMessage = "로그인에 실패했습니다. 관리자 또는 사업장 관리자 계정으로 로그인해 주세요.";
         String detail = exception.getMessage();
 
         if (detail == null || detail.isBlank()) {

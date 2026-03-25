@@ -34,7 +34,7 @@
                 <div class="eyebrow">Settings</div>
                 <h1>회사 위치 설정</h1>
             </div>
-            <p>회사 기본 위치와 사업장별 출근 좌표를 각각 관리할 수 있습니다.</p>
+            <p th:text="${workplaceScopedAdmin} ? '담당 사업장 위치와 공지사항을 관리할 수 있습니다.' : '회사 기본 위치와 사업장별 출근 좌표를 각각 관리할 수 있습니다.'">회사 기본 위치와 사업장별 출근 좌표를 각각 관리할 수 있습니다.</p>
         </section>
 
         <div class="alert success" th:if="${message}" th:text="${message}">저장되었습니다.</div>
@@ -45,7 +45,8 @@
                 <h2>사업장 탭</h2>
             </div>
             <div class="location-tabs">
-                <a th:href="@{/settings/location}"
+                <a th:if="${!workplaceScopedAdmin}"
+                   th:href="@{/settings/location}"
                    th:classappend="${selectedWorkplaceId == null} ? ' active' : ''">회사 기본</a>
                 <a th:each="workplace : ${workplaces}"
                    th:href="@{/settings/location(workplaceId=${workplace.id()})}"
@@ -55,7 +56,7 @@
             <p class="section-copy">직원을 특정 사업장으로 지정하면 모바일 출퇴근은 해당 사업장 위치와 반경을 기준으로 동작합니다. 사업장을 지정하지 않은 직원은 회사 기본 위치를 사용합니다.</p>
         </section>
 
-        <section class="settings-layout" th:if="${selectedWorkplaceId == null}">
+        <section class="settings-layout" th:if="${selectedWorkplaceId == null and !workplaceScopedAdmin}">
             <article class="panel">
                 <h2>회사 기본 설정</h2>
                 <div class="location-preview">
@@ -237,7 +238,7 @@
             </article>
         </section>
 
-        <section class="panel">
+        <section class="panel" th:if="${!workplaceScopedAdmin}">
             <div class="panel-header">
                 <h2>사업장 추가</h2>
             </div>

@@ -48,13 +48,15 @@ public class AdminController {
                             @RequestParam(required = false) Long workplaceId,
                             Model model,
                             Principal principal) {
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
         String normalizedFilter = adminService.normalizeDashboardFilter(filter);
         model.addAttribute("selectedFilter", normalizedFilter);
         model.addAttribute("selectedFilterLabel", adminService.getDashboardFilterLabel(normalizedFilter));
-        model.addAttribute("selectedWorkplaceId", workplaceId);
+        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
+        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
-        model.addAttribute("summary", adminService.getTodaySummary(principal.getName(), workplaceId));
-        model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName(), normalizedFilter, workplaceId));
+        model.addAttribute("summary", adminService.getTodaySummary(principal.getName(), resolvedWorkplaceId));
+        model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName(), normalizedFilter, resolvedWorkplaceId));
         return "dashboard";
     }
 
@@ -66,16 +68,18 @@ public class AdminController {
                                     Model model,
                                     Principal principal) {
         YearMonth selectedMonth = resolveYearMonth(year, month);
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
 
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("selectedEmployeeCode", employeeCode);
-        model.addAttribute("selectedWorkplaceId", workplaceId);
+        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
+        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
-        model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth, workplaceId));
-        model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth, workplaceId));
-        model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth, workplaceId));
+        model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth, resolvedWorkplaceId));
+        model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth, resolvedWorkplaceId));
+        model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth, resolvedWorkplaceId));
         model.addAttribute("selectedEmployeeDetail",
-                adminService.getMonthlyAttendanceEmployeeDetail(principal.getName(), selectedMonth, employeeCode, workplaceId));
+                adminService.getMonthlyAttendanceEmployeeDetail(principal.getName(), selectedMonth, employeeCode, resolvedWorkplaceId));
         return "monthly-attendance";
     }
 
@@ -85,7 +89,8 @@ public class AdminController {
                                                                             @RequestParam(required = false) Long workplaceId,
                                                                             Principal principal) {
         YearMonth selectedMonth = resolveYearMonth(year, month);
-        byte[] fileBytes = adminService.exportMonthlyAttendanceExcel(principal.getName(), selectedMonth, workplaceId);
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        byte[] fileBytes = adminService.exportMonthlyAttendanceExcel(principal.getName(), selectedMonth, resolvedWorkplaceId);
         String fileName = "monthly-attendance-" + selectedMonth + ".xlsx";
 
         return ResponseEntity.ok()
@@ -117,7 +122,8 @@ public class AdminController {
                             @RequestParam(required = false) Long workplaceId,
                             Model model,
                             Principal principal) {
-        EmployeePage employeePage = adminService.getEmployees(principal.getName(), showDeleted, workplaceId, page, EMPLOYEE_PAGE_SIZE);
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        EmployeePage employeePage = adminService.getEmployees(principal.getName(), showDeleted, resolvedWorkplaceId, page, EMPLOYEE_PAGE_SIZE);
         model.addAttribute("employees", employeePage.employees());
         model.addAttribute("currentPage", employeePage.currentPage());
         model.addAttribute("totalPages", employeePage.totalPages());
@@ -127,7 +133,9 @@ public class AdminController {
         model.addAttribute("hasNextPage", employeePage.hasNext());
         model.addAttribute("editId", editId);
         model.addAttribute("showDeleted", showDeleted);
-        model.addAttribute("selectedWorkplaceId", workplaceId);
+        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
+        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
+        model.addAttribute("canManageAdminRoles", adminService.canManageAdminRoles(principal.getName()));
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
         if (!model.containsAttribute("employeeForm")) {
             model.addAttribute("employeeForm", editId == null
@@ -154,20 +162,27 @@ public class AdminController {
 
     @GetMapping("/settings/location")
     public String companyLocation(@RequestParam(required = false) Long workplaceId, Model model, Principal principal) {
+        boolean workplaceScopedAdmin = adminService.isWorkplaceScopedAdmin(principal.getName());
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
         if (!model.containsAttribute("locationForm")) {
-            model.addAttribute("locationForm", adminService.getCompanyLocationForm(principal.getName()));
+            if (!workplaceScopedAdmin) {
+                model.addAttribute("locationForm", adminService.getCompanyLocationForm(principal.getName()));
+            }
         }
         if (!model.containsAttribute("workplaceForm")) {
-            model.addAttribute("workplaceForm", workplaceId == null
+            model.addAttribute("workplaceForm", resolvedWorkplaceId == null
                     ? new WorkplaceLocationForm()
-                    : adminService.getWorkplaceLocationForm(principal.getName(), workplaceId));
+                    : adminService.getWorkplaceLocationForm(principal.getName(), resolvedWorkplaceId));
         }
         if (!model.containsAttribute("newWorkplaceForm")) {
             model.addAttribute("newWorkplaceForm", new WorkplaceLocationForm());
         }
-        model.addAttribute("location", adminService.getCompanyLocation(principal.getName()));
+        if (!workplaceScopedAdmin) {
+            model.addAttribute("location", adminService.getCompanyLocation(principal.getName()));
+        }
         model.addAttribute("workplaces", adminService.getWorkplaces(principal.getName()));
-        model.addAttribute("selectedWorkplaceId", workplaceId);
+        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
+        model.addAttribute("workplaceScopedAdmin", workplaceScopedAdmin);
         return "location-settings";
     }
 

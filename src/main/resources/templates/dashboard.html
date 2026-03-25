@@ -31,7 +31,7 @@
                 <div class="eyebrow">Dashboard</div>
                 <h1>오늘 출근 현황</h1>
             </div>
-            <p>직원들의 출근 상태를 한눈에 확인할 수 있습니다.</p>
+            <p th:text="${workplaceScopedAdmin} ? '담당 사업장 직원들의 출근 상태를 한눈에 확인할 수 있습니다.' : '직원들의 출근 상태를 한눈에 확인할 수 있습니다.'">직원들의 출근 상태를 한눈에 확인할 수 있습니다.</p>
         </section>
 
         <section class="panel">
@@ -43,15 +43,15 @@
                 <label>
                     사업장
                     <select name="workplaceId">
-                        <option value="">전체</option>
-                        <option value="0" th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == 0}">본사</option>
+                        <option value="" th:if="${!workplaceScopedAdmin}">전체</option>
+                        <option value="0" th:if="${!workplaceScopedAdmin}" th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == 0}">본사</option>
                         <option th:each="workplace : ${workplaceOptions}"
                                 th:value="${workplace.id()}"
                                 th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == workplace.id()}"
                                 th:text="${workplace.name()}">사업장</option>
                     </select>
                 </label>
-                <button type="submit" class="primary-button">적용</button>
+                <button type="submit" class="primary-button" th:if="${!workplaceScopedAdmin}">적용</button>
             </form>
         </section>
 
