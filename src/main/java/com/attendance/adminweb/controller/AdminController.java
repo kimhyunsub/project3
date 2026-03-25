@@ -254,7 +254,7 @@ public class AdminController {
                                  BindingResult bindingResult,
                                  @RequestParam(defaultValue = "1") int page,
                                  @RequestParam(defaultValue = "false") boolean showDeleted,
-                                 @RequestParam(required = false) Long workplaceId,
+                                 @RequestParam(name = "listWorkplaceId", required = false) Long workplaceId,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         validateCreateEmployeeForm(form, bindingResult);
@@ -281,6 +281,9 @@ public class AdminController {
 
     @PostMapping("/employees/upload")
     public String uploadEmployees(@RequestParam("employeeFile") MultipartFile employeeFile,
+                                  @RequestParam(defaultValue = "1") int page,
+                                  @RequestParam(defaultValue = "false") boolean showDeleted,
+                                  @RequestParam(name = "listWorkplaceId", required = false) Long workplaceId,
                                   RedirectAttributes redirectAttributes,
                                   Principal principal) {
         try {
@@ -303,7 +306,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
 
-        return "redirect:/employees";
+        return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
     }
 
     @PostMapping("/employees/{employeeId}/update")
@@ -312,7 +315,7 @@ public class AdminController {
                                  BindingResult bindingResult,
                                  @RequestParam(defaultValue = "1") int page,
                                  @RequestParam(defaultValue = "false") boolean showDeleted,
-                                 @RequestParam(required = false) Long workplaceId,
+                                 @RequestParam(name = "listWorkplaceId", required = false) Long workplaceId,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         validateUpdateEmployeeForm(form, bindingResult);
