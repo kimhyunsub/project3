@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL 리포트</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div>
+            <div class="eyebrow">Attendance Admin</div>
+            <h2>관리자 페이지</h2>
+        </div>
+        <nav class="nav-menu">
+            <a th:href="@{/dashboard}">오늘 출근 현황</a>
+            <a th:href="@{/attendance/monthly}">월별 출근 현황</a>
+            <a th:href="@{/employees}">직원 목록</a>
+            <a th:href="@{/settings/location}">회사 위치 설정</a>
+            <a th:href="@{/sql-console}" class="active">SQL 리포트</a>
+        </nav>
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit" class="secondary-button full-width">로그아웃</button>
+        </form>
+    </aside>
+
+    <main class="content">
+        <section class="page-header">
+            <div>
+                <div class="eyebrow">SQL Report</div>
+                <h1>SQL 리포트</h1>
+            </div>
+            <p th:text="${workplaceScopedAdmin} ? '사업장 관리자는 본인 사업장으로 제한된 scoped_* 데이터만 조회할 수 있습니다.' : '회사 관리자는 읽기 전용 SQL을 실행하고 결과를 엑셀로 내려받을 수 있습니다.'">
+                읽기 전용 SQL을 실행하고 결과를 엑셀로 내려받을 수 있습니다.
+            </p>
+        </section>
+
+        <div class="alert error" th:if="${sqlErrorMessage}" th:text="${sqlErrorMessage}">실행 중 오류가 발생했습니다.</div>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>쿼리 실행</h2>
+                <span class="pill neutral">SELECT / WITH 전용</span>
+            </div>
+            <p class="section-copy">한 번에 한 개의 조회 쿼리만 실행할 수 있습니다. 미리보기는 최대 200행, 엑셀 다운로드는 최대 5,000행까지 지원합니다.</p>
+            <div class="sql-console-notice">
+                <strong>제한 사항</strong>
+                <p th:if="${!workplaceScopedAdmin}">세미콜론, 주석, INSERT/UPDATE/DELETE/DDL 문은 차단됩니다. 운영 DB에 부담이 큰 전체 스캔 쿼리는 피하는 것을 권장합니다.</p>
+                <p th:if="${workplaceScopedAdmin}">사업장 관리자는 원본 테이블 대신 `scoped_employees`, `scoped_attendance_records`, `scoped_workplace`만 조회할 수 있습니다. 이 범위는 현재 로그인한 사업장으로 자동 제한됩니다.</p>
+            </div>
+            <div class="sql-console-notice" th:if="${workplaceScopedAdmin}">
+                <strong>예시 쿼리</strong>
+                <p>`select employee_code, name from scoped_employees order by name`</p>
+                <p>`select attendance_date, employee_id, status from scoped_attendance_records order by attendance_date desc`</p>
+            </div>
+            <form th:action="@{/sql-console/execute}" method="post" class="settings-form" data-skip-confirm="true">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <label>
+                    SQL
+                    <textarea name="queryText"
+                              class="sql-editor"
+                              rows="12"
+                              th:placeholder="${workplaceScopedAdmin} ? 'select employee_code, name from scoped_employees order by name' : 'select employee_code, name from employees order by name'"
+                              th:text="${sqlQueryText}"></textarea>
+                </label>
+                <div class="button-row">
+                    <button type="submit" class="primary-button">미리보기 실행</button>
+                    <button type="submit" class="ghost-link" th:formaction="@{/sql-console/excel}">엑셀 다운로드</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel" th:if="${queryResult != null}">
+            <div class="panel-header">
+                <h2>조회 결과</h2>
+                <div class="action-row sql-console-meta">
+                    <span class="pill neutral" th:text="|컬럼 ${#lists.size(queryResult.columns())}개|">컬럼 0개</span>
+                    <span class="pill neutral"
+                          th:text="${queryResult.truncated()} ? |미리보기 ${#lists.size(queryResult.rows())}행 (최대 ${queryResult.rowLimit()}행)| : |조회 ${#lists.size(queryResult.rows())}행|">
+                        조회 0행
+                    </span>
+                </div>
+            </div>
+            <div class="empty-state" th:if="${#lists.isEmpty(queryResult.rows())}">조회 결과가 없습니다.</div>
+            <div class="table-scroll" th:if="${!#lists.isEmpty(queryResult.rows())}">
+                <table class="sql-result-table">
+                    <thead>
+                    <tr>
+                        <th th:each="column : ${queryResult.columns()}" th:text="${column}">COLUMN</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${queryResult.rows()}">
+                        <td th:each="cell : ${row}" th:text="${cell}">value</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+<script th:src="@{/js/admin-ui.js}"></script>
+</body>
+</html>

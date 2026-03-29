@@ -4,6 +4,7 @@ import com.attendance.adminweb.model.CompanyLocationForm;
 import com.attendance.adminweb.model.EmployeePage;
 import com.attendance.adminweb.model.EmployeeForm;
 import com.attendance.adminweb.model.EmployeeUploadResult;
+import com.attendance.adminweb.model.SqlQueryResult;
 import com.attendance.adminweb.model.WorkplaceLocationForm;
 import com.attendance.adminweb.service.AdminService;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -54,6 +57,7 @@ public class AdminController {
         model.addAttribute("selectedFilterLabel", adminService.getDashboardFilterLabel(normalizedFilter));
         model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
         model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
+        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
         model.addAttribute("summary", adminService.getTodaySummary(principal.getName(), resolvedWorkplaceId));
         model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName(), normalizedFilter, resolvedWorkplaceId));
@@ -74,6 +78,7 @@ public class AdminController {
         model.addAttribute("selectedEmployeeCode", employeeCode);
         model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
         model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
+        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
         model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth, resolvedWorkplaceId));
         model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth, resolvedWorkplaceId));
@@ -103,6 +108,46 @@ public class AdminController {
                 .body(new ByteArrayResource(fileBytes));
     }
 
+    @GetMapping("/sql-console")
+    public String sqlConsole(Model model, Principal principal) {
+        ensureSqlConsoleAccess(principal);
+        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
+        populateSqlConsoleModel(model, "", null);
+        return "sql-console";
+    }
+
+    @PostMapping("/sql-console/execute")
+    public String executeSqlQuery(@RequestParam String queryText,
+                                  Model model,
+                                  Principal principal) {
+        ensureSqlConsoleAccess(principal);
+        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
+        try {
+            SqlQueryResult queryResult = adminService.executeReadOnlySql(principal.getName(), queryText);
+            populateSqlConsoleModel(model, queryText, queryResult);
+        } catch (IllegalArgumentException exception) {
+            populateSqlConsoleModel(model, queryText, null);
+            model.addAttribute("sqlErrorMessage", exception.getMessage());
+        }
+        return "sql-console";
+    }
+
+    @PostMapping("/sql-console/excel")
+    public ResponseEntity<ByteArrayResource> downloadSqlQueryExcel(@RequestParam String queryText,
+                                                                   Principal principal) {
+        ensureSqlConsoleAccess(principal);
+        byte[] fileBytes = adminService.exportSqlQueryExcel(principal.getName(), queryText);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("sql-report.xlsx", StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(fileBytes.length)
+                .body(new ByteArrayResource(fileBytes));
+    }
+
     private YearMonth resolveYearMonth(Integer year, Integer month) {
         YearMonth currentMonth = YearMonth.now();
         int resolvedYear = year == null ? currentMonth.getYear() : year;
@@ -112,6 +157,17 @@ public class AdminController {
             return YearMonth.of(resolvedYear, resolvedMonth);
         } catch (DateTimeException exception) {
             return currentMonth;
+        }
+    }
+
+    private void populateSqlConsoleModel(Model model, String queryText, SqlQueryResult queryResult) {
+        model.addAttribute("sqlQueryText", queryText == null ? "" : queryText);
+        model.addAttribute("queryResult", queryResult);
+    }
+
+    private void ensureSqlConsoleAccess(Principal principal) {
+        if (!adminService.canAccessSqlConsole(principal.getName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "회사 관리자만 SQL 리포트에 접근할 수 있습니다.");
         }
     }
 
@@ -136,6 +192,7 @@ public class AdminController {
         model.addAttribute("showDeleted", showDeleted);
         model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
         model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
+        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
         model.addAttribute("canManageAdminRoles", adminService.canManageAdminRoles(principal.getName()));
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
         boolean employeeModalOpen = editId != null || createMode || Boolean.TRUE.equals(model.asMap().get("createMode"));
@@ -187,6 +244,7 @@ public class AdminController {
         model.addAttribute("workplaces", adminService.getWorkplaces(principal.getName()));
         model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
         model.addAttribute("workplaceScopedAdmin", workplaceScopedAdmin);
+        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
         return "location-settings";
     }
 

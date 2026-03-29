@@ -728,6 +728,41 @@ th {
     overflow-x: auto;
 }
 
+.sql-console-notice {
+    margin-bottom: 18px;
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.03);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.sql-console-notice strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.sql-console-notice p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.sql-editor {
+    min-height: 260px;
+    font-family: "SFMono-Regular", "Consolas", "Monaco", monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.sql-result-table {
+    min-width: max-content;
+}
+
+.sql-result-table td {
+    white-space: nowrap;
+}
+
 .list-summary,
 .pagination-bar {
     display: flex;

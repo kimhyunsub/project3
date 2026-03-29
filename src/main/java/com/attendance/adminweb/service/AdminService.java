@@ -25,12 +25,18 @@ import com.attendance.adminweb.model.MonthlyAttendanceEmployeeDetailRow;
 import com.attendance.adminweb.model.MonthlyAttendanceEmployeeRow;
 import com.attendance.adminweb.model.MonthlyAttendanceRecordRow;
 import com.attendance.adminweb.model.MonthlyAttendanceSummary;
+import com.attendance.adminweb.model.SqlQueryResult;
 import com.attendance.adminweb.model.WorkplaceLocationForm;
 import com.attendance.adminweb.model.WorkplaceLocationView;
 import com.attendance.adminweb.model.WorkplaceOption;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -59,6 +65,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import javax.sql.DataSource;
 
 @Service
 @Transactional(readOnly = true)
@@ -69,6 +76,9 @@ public class AdminService {
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy년 M월");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
     private static final DataFormatter DATA_FORMATTER = new DataFormatter();
+    private static final int SQL_PREVIEW_ROW_LIMIT = 200;
+    private static final int SQL_EXPORT_ROW_LIMIT = 5000;
+    private static final int EXCEL_CELL_TEXT_LIMIT = 32767;
 
     private final EmployeeRepository employeeRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
@@ -76,19 +86,22 @@ public class AdminService {
     private final CompanySettingRepository companySettingRepository;
     private final WorkplaceRepository workplaceRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DataSource dataSource;
 
     public AdminService(EmployeeRepository employeeRepository,
                         AttendanceRecordRepository attendanceRecordRepository,
                         CompanyRepository companyRepository,
                         CompanySettingRepository companySettingRepository,
                         WorkplaceRepository workplaceRepository,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        DataSource dataSource) {
         this.employeeRepository = employeeRepository;
         this.attendanceRecordRepository = attendanceRecordRepository;
         this.companyRepository = companyRepository;
         this.companySettingRepository = companySettingRepository;
         this.workplaceRepository = workplaceRepository;
         this.passwordEncoder = passwordEncoder;
+        this.dataSource = dataSource;
     }
 
     public DashboardSummary getTodaySummary(String employeeCode, Long workplaceId) {
@@ -524,6 +537,58 @@ public class AdminService {
         return form;
     }
 
+    public boolean canAccessSqlConsole(String employeeCode) {
+        Employee employee = getEmployeeByCode(employeeCode);
+        return employee.getRole() == EmployeeRole.ADMIN || employee.getRole() == EmployeeRole.WORKPLACE_ADMIN;
+    }
+
+    public SqlQueryResult executeReadOnlySql(String employeeCode, String queryText) {
+        Employee admin = requireSqlConsoleAdmin(employeeCode);
+        return runSqlQuery(buildExecutableSql(admin, validateSqlQuery(admin, queryText)), admin, SQL_PREVIEW_ROW_LIMIT);
+    }
+
+    public byte[] exportSqlQueryExcel(String employeeCode, String queryText) {
+        Employee admin = requireSqlConsoleAdmin(employeeCode);
+        SqlQueryResult queryResult = runSqlQuery(buildExecutableSql(admin, validateSqlQuery(admin, queryText)), admin, SQL_EXPORT_ROW_LIMIT);
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setFillForegroundColor((short) 22);
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            Sheet sheet = workbook.createSheet("SQL 결과");
+            Row headerRow = sheet.createRow(0);
+            for (int index = 0; index < queryResult.columns().size(); index++) {
+                Cell cell = headerRow.createCell(index);
+                cell.setCellValue(queryResult.columns().get(index));
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int rowIndex = 0; rowIndex < queryResult.rows().size(); rowIndex++) {
+                List<String> rowValues = queryResult.rows().get(rowIndex);
+                Row row = sheet.createRow(rowIndex + 1);
+                for (int columnIndex = 0; columnIndex < rowValues.size(); columnIndex++) {
+                    row.createCell(columnIndex).setCellValue(trimExcelCellValue(rowValues.get(columnIndex)));
+                }
+            }
+
+            for (int index = 0; index < queryResult.columns().size(); index++) {
+                sheet.autoSizeColumn(index);
+                sheet.setColumnWidth(index, Math.max(sheet.getColumnWidth(index), 3600));
+            }
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("SQL 결과 엑셀을 생성할 수 없습니다.", exception);
+        }
+    }
+
     public CompanyLocationForm getCompanyLocationForm(String employeeCode) {
         ensureCompanyScopeAllowed(getEmployeeByCode(employeeCode));
         CompanyLocationView location = getCompanyLocation(employeeCode);
@@ -942,6 +1007,14 @@ public class AdminService {
         return employee.getRole() == EmployeeRole.WORKPLACE_ADMIN;
     }
 
+    private Employee requireSqlConsoleAdmin(String employeeCode) {
+        Employee admin = getEmployeeByCode(employeeCode);
+        if (admin.getRole() != EmployeeRole.ADMIN && admin.getRole() != EmployeeRole.WORKPLACE_ADMIN) {
+            throw new IllegalArgumentException("SQL 리포트는 관리자 권한으로만 사용할 수 있습니다.");
+        }
+        return admin;
+    }
+
     private Long getAssignedWorkplaceId(Employee employee) {
         if (employee.getWorkplace() == null) {
             throw new IllegalStateException("사업장 관리자 계정에는 사업장 지정이 필요합니다.");
@@ -1031,6 +1104,137 @@ public class AdminService {
     private String readCell(Row row, int cellIndex) {
         Cell cell = row == null ? null : row.getCell(cellIndex);
         return cell == null ? "" : DATA_FORMATTER.formatCellValue(cell).trim();
+    }
+
+    private String validateSqlQuery(Employee admin, String queryText) {
+        if (queryText == null || queryText.isBlank()) {
+            throw new IllegalArgumentException("실행할 SQL을 입력해 주세요.");
+        }
+
+        String normalized = queryText.trim();
+        String lowerCaseQuery = normalized.toLowerCase();
+
+        if (normalized.length() > 20000) {
+            throw new IllegalArgumentException("SQL은 20,000자 이하로 입력해 주세요.");
+        }
+        if (normalized.contains(";")) {
+            throw new IllegalArgumentException("세미콜론 없이 단일 조회 쿼리만 실행할 수 있습니다.");
+        }
+        if (lowerCaseQuery.contains("--") || lowerCaseQuery.contains("/*") || lowerCaseQuery.contains("*/")) {
+            throw new IllegalArgumentException("주석이 포함된 SQL은 실행할 수 없습니다.");
+        }
+        if (!(lowerCaseQuery.startsWith("select") || lowerCaseQuery.startsWith("with"))) {
+            throw new IllegalArgumentException("SELECT 또는 WITH로 시작하는 조회 쿼리만 실행할 수 있습니다.");
+        }
+
+        String[] blockedKeywords = {
+                "insert", "update", "delete", "merge", "drop", "alter", "truncate",
+                "create", "grant", "revoke", "comment", "call", "execute", "exec",
+                "vacuum", "analyze", "refresh", "copy", "set"
+        };
+
+        for (String blockedKeyword : blockedKeywords) {
+            if (lowerCaseQuery.matches("(?s).*\\b" + blockedKeyword + "\\b.*")) {
+                throw new IllegalArgumentException("조회 전용 SQL만 실행할 수 있습니다. 금지된 키워드: " + blockedKeyword.toUpperCase());
+            }
+        }
+
+        if (isWorkplaceScopedAdmin(admin)) {
+            if (!lowerCaseQuery.matches("(?s).*\\bscoped_(employees|attendance_records|workplace)\\b.*")) {
+                throw new IllegalArgumentException("사업장 관리자는 scoped_employees, scoped_attendance_records, scoped_workplace 중 하나를 사용해 조회해 주세요.");
+            }
+
+            String[] blockedTableNames = {"employees", "attendance_records", "workplaces", "companies", "company_settings"};
+            for (String blockedTableName : blockedTableNames) {
+                if (lowerCaseQuery.matches("(?s).*\\b" + blockedTableName + "\\b.*")
+                        && !lowerCaseQuery.matches("(?s).*\\bscoped_" + blockedTableName + "\\b.*")) {
+                    throw new IllegalArgumentException("사업장 관리자는 원본 테이블 대신 scoped_* 뷰만 조회할 수 있습니다.");
+                }
+            }
+        }
+
+        return normalized;
+    }
+
+    private String buildExecutableSql(Employee admin, String queryText) {
+        if (!isWorkplaceScopedAdmin(admin)) {
+            return queryText;
+        }
+
+        return """
+                with scoped_workplace as (
+                    select *
+                    from workplaces
+                    where id = ?
+                ),
+                scoped_employees as (
+                    select *
+                    from employees
+                    where workplace_id = ?
+                      and deleted = false
+                ),
+                scoped_attendance_records as (
+                    select ar.*
+                    from attendance_records ar
+                    join scoped_employees se on se.id = ar.employee_id
+                ),
+                user_query as (
+                %s
+                )
+                select *
+                from user_query
+                """.formatted(queryText);
+    }
+
+    private SqlQueryResult runSqlQuery(String queryText, Employee admin, int rowLimit) {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setReadOnly(true);
+            try (PreparedStatement statement = connection.prepareStatement(queryText)) {
+                if (isWorkplaceScopedAdmin(admin)) {
+                    Long workplaceId = getAssignedWorkplaceId(admin);
+                    statement.setLong(1, workplaceId);
+                    statement.setLong(2, workplaceId);
+                }
+                statement.setMaxRows(rowLimit + 1);
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    ResultSetMetaData metaData = resultSet.getMetaData();
+                    int columnCount = metaData.getColumnCount();
+                    List<String> columns = new ArrayList<>(columnCount);
+                    for (int index = 1; index <= columnCount; index++) {
+                        columns.add(metaData.getColumnLabel(index));
+                    }
+
+                    List<List<String>> rows = new ArrayList<>();
+                    boolean truncated = false;
+                    while (resultSet.next()) {
+                        if (rows.size() == rowLimit) {
+                            truncated = true;
+                            break;
+                        }
+
+                        List<String> row = new ArrayList<>(columnCount);
+                        for (int index = 1; index <= columnCount; index++) {
+                            Object value = resultSet.getObject(index);
+                            row.add(value == null ? "" : String.valueOf(value));
+                        }
+                        rows.add(row);
+                    }
+
+                    return new SqlQueryResult(columns, rows, rowLimit, truncated);
+                }
+            }
+        } catch (SQLException exception) {
+            throw new IllegalArgumentException("SQL 실행에 실패했습니다. 구문과 테이블/컬럼명을 확인해 주세요.", exception);
+        }
+    }
+
+    private String trimExcelCellValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= EXCEL_CELL_TEXT_LIMIT
+                ? value
+                : value.substring(0, EXCEL_CELL_TEXT_LIMIT);
     }
 
     private Map<Long, AttendanceRecord> getTodayRecordsByEmployee(List<Employee> employees) {
