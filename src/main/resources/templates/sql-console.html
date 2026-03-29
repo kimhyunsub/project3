@@ -32,9 +32,17 @@
                 <div class="eyebrow">SQL Report</div>
                 <h1>SQL 리포트</h1>
             </div>
-            <p th:text="${workplaceScopedAdmin} ? '사업장 관리자는 본인 사업장으로 제한된 scoped_* 데이터만 조회할 수 있습니다.' : '회사 관리자는 읽기 전용 SQL을 실행하고 결과를 엑셀로 내려받을 수 있습니다.'">
-                읽기 전용 SQL을 실행하고 결과를 엑셀로 내려받을 수 있습니다.
-            </p>
+            <div class="page-header-actions">
+                <p th:text="${workplaceScopedAdmin} ? '사업장 관리자는 본인 사업장으로 제한된 scoped_* 데이터만 조회할 수 있습니다.' : '회사 관리자는 읽기 전용 SQL을 실행하고 결과를 엑셀로 내려받을 수 있습니다.'">
+                    읽기 전용 SQL을 실행하고 결과를 엑셀로 내려받을 수 있습니다.
+                </p>
+                <a class="ghost-link small-link"
+                   href="https://github.com/hsft-team/project1/blob/main/docs/DB_TABLE_SPEC.md"
+                   target="_blank"
+                   rel="noreferrer">
+                    테이블 명세 보기
+                </a>
+            </div>
         </section>
 
         <div class="alert error" th:if="${sqlErrorMessage}" th:text="${sqlErrorMessage}">실행 중 오류가 발생했습니다.</div>

@@ -249,6 +249,12 @@ textarea:focus {
     gap: 16px;
 }
 
+.page-header-actions {
+    display: grid;
+    justify-items: end;
+    gap: 12px;
+}
+
 .card-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -890,6 +896,10 @@ body.confirm-open {
     .page-header {
         align-items: start;
         flex-direction: column;
+    }
+
+    .page-header-actions {
+        justify-items: start;
     }
 }
 
