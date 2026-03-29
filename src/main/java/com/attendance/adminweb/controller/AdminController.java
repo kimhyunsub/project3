@@ -112,7 +112,7 @@ public class AdminController {
     public String sqlConsole(Model model, Principal principal) {
         ensureSqlConsoleAccess(principal);
         model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
-        populateSqlConsoleModel(model, "", null);
+        populateSqlConsoleModel(model, principal.getName(), "", null);
         return "sql-console";
     }
 
@@ -124,9 +124,9 @@ public class AdminController {
         model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
         try {
             SqlQueryResult queryResult = adminService.executeReadOnlySql(principal.getName(), queryText);
-            populateSqlConsoleModel(model, queryText, queryResult);
+            populateSqlConsoleModel(model, principal.getName(), queryText, queryResult);
         } catch (IllegalArgumentException exception) {
-            populateSqlConsoleModel(model, queryText, null);
+            populateSqlConsoleModel(model, principal.getName(), queryText, null);
             model.addAttribute("sqlErrorMessage", exception.getMessage());
         }
         return "sql-console";
@@ -160,9 +160,10 @@ public class AdminController {
         }
     }
 
-    private void populateSqlConsoleModel(Model model, String queryText, SqlQueryResult queryResult) {
+    private void populateSqlConsoleModel(Model model, String employeeCode, String queryText, SqlQueryResult queryResult) {
         model.addAttribute("sqlQueryText", queryText == null ? "" : queryText);
         model.addAttribute("queryResult", queryResult);
+        model.addAttribute("sqlSnippets", adminService.getSqlConsoleSnippets(employeeCode));
     }
 
     private void ensureSqlConsoleAccess(Principal principal) {

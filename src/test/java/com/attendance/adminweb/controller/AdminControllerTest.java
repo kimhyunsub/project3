@@ -4,6 +4,7 @@ import com.attendance.adminweb.config.SecurityConfig;
 import com.attendance.adminweb.model.CompanyLocationView;
 import com.attendance.adminweb.model.DashboardSummary;
 import com.attendance.adminweb.model.SqlQueryResult;
+import com.attendance.adminweb.model.SqlSnippet;
 import com.attendance.adminweb.service.AdminService;
 import com.attendance.adminweb.service.DatabaseUserDetailsService;
 import org.junit.jupiter.api.Test;
@@ -90,11 +91,14 @@ class AdminControllerTest {
     void sqlConsoleShouldRenderForAdmin() throws Exception {
         given(adminService.canAccessSqlConsole(anyString())).willReturn(true);
         given(adminService.isWorkplaceScopedAdmin(anyString())).willReturn(false);
+        given(adminService.getSqlConsoleSnippets(anyString()))
+                .willReturn(List.of(new SqlSnippet("monthly", "월별 출근 리스트", "설명", "select 1")));
 
         mockMvc.perform(get("/sql-console"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("sql-console"))
-                .andExpect(model().attributeExists("sqlQueryText"));
+                .andExpect(model().attributeExists("sqlQueryText"))
+                .andExpect(model().attributeExists("sqlSnippets"));
     }
 
     @Test
@@ -102,6 +106,8 @@ class AdminControllerTest {
     void sqlConsoleExecuteShouldRenderResult() throws Exception {
         given(adminService.canAccessSqlConsole(anyString())).willReturn(true);
         given(adminService.isWorkplaceScopedAdmin(anyString())).willReturn(false);
+        given(adminService.getSqlConsoleSnippets(anyString()))
+                .willReturn(List.of(new SqlSnippet("monthly", "월별 출근 리스트", "설명", "select 1")));
         given(adminService.executeReadOnlySql(anyString(), anyString()))
                 .willReturn(new SqlQueryResult(List.of("value"), List.of(List.of("1")), 200, false));
 
@@ -131,6 +137,8 @@ class AdminControllerTest {
     void sqlConsoleShouldRenderForWorkplaceAdmin() throws Exception {
         given(adminService.canAccessSqlConsole(anyString())).willReturn(true);
         given(adminService.isWorkplaceScopedAdmin(anyString())).willReturn(true);
+        given(adminService.getSqlConsoleSnippets(anyString()))
+                .willReturn(List.of(new SqlSnippet("monthly", "월별 출근 리스트", "설명", "select 1")));
 
         mockMvc.perform(get("/sql-console"))
                 .andExpect(status().isOk())

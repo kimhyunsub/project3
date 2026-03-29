@@ -55,6 +55,15 @@
                 <p>`select employee_code, name from scoped_employees order by name`</p>
                 <p>`select attendance_date, employee_id, status from scoped_attendance_records order by attendance_date desc`</p>
             </div>
+            <div class="sql-snippet-grid" th:if="${!#lists.isEmpty(sqlSnippets)}">
+                <button type="button"
+                        class="sql-snippet-card"
+                        th:each="snippet : ${sqlSnippets}"
+                        th:attr="data-sql-snippet=${snippet.query()}">
+                    <strong th:text="${snippet.label()}">월별 출근 리스트</strong>
+                    <span th:text="${snippet.description()}">설명</span>
+                </button>
+            </div>
             <form th:action="@{/sql-console/execute}" method="post" class="settings-form" data-skip-confirm="true">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <label>
@@ -102,5 +111,23 @@
     </main>
 </div>
 <script th:src="@{/js/admin-ui.js}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const sqlEditor = document.querySelector('.sql-editor');
+        const snippetButtons = document.querySelectorAll('[data-sql-snippet]');
+
+        if (!sqlEditor || snippetButtons.length === 0) {
+            return;
+        }
+
+        snippetButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                sqlEditor.value = button.getAttribute('data-sql-snippet') || '';
+                sqlEditor.focus();
+                sqlEditor.setSelectionRange(0, sqlEditor.value.length);
+            });
+        });
+    });
+</script>
 </body>
 </html>

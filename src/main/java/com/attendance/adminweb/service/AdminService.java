@@ -26,6 +26,7 @@ import com.attendance.adminweb.model.MonthlyAttendanceEmployeeRow;
 import com.attendance.adminweb.model.MonthlyAttendanceRecordRow;
 import com.attendance.adminweb.model.MonthlyAttendanceSummary;
 import com.attendance.adminweb.model.SqlQueryResult;
+import com.attendance.adminweb.model.SqlSnippet;
 import com.attendance.adminweb.model.WorkplaceLocationForm;
 import com.attendance.adminweb.model.WorkplaceLocationView;
 import com.attendance.adminweb.model.WorkplaceOption;
@@ -540,6 +541,139 @@ public class AdminService {
     public boolean canAccessSqlConsole(String employeeCode) {
         Employee employee = getEmployeeByCode(employeeCode);
         return employee.getRole() == EmployeeRole.ADMIN || employee.getRole() == EmployeeRole.WORKPLACE_ADMIN;
+    }
+
+    public List<SqlSnippet> getSqlConsoleSnippets(String employeeCode) {
+        Employee admin = requireSqlConsoleAdmin(employeeCode);
+        if (isWorkplaceScopedAdmin(admin)) {
+            return List.of(
+                    new SqlSnippet(
+                            "monthly-attendance",
+                            "월별 출근 리스트",
+                            "이번 달 기준 사업장 직원 출근 기록을 날짜 역순으로 조회합니다.",
+                            """
+                            select
+                                sar.attendance_date,
+                                se.employee_code,
+                                se.name,
+                                sar.check_in_time,
+                                sar.check_out_time,
+                                sar.late,
+                                sar.status
+                            from scoped_attendance_records sar
+                            join scoped_employees se on se.id = sar.employee_id
+                            where sar.attendance_date >= date_trunc('month', current_date)::date
+                              and sar.attendance_date < (date_trunc('month', current_date) + interval '1 month')::date
+                            order by sar.attendance_date desc, se.name asc
+                            """
+                    ),
+                    new SqlSnippet(
+                            "period-attendance",
+                            "기간별 출근 리스트",
+                            "기간 조건만 바꿔서 사업장 출근 기록을 조회할 수 있습니다.",
+                            """
+                            select
+                                sar.attendance_date,
+                                se.employee_code,
+                                se.name,
+                                sar.check_in_time,
+                                sar.check_out_time,
+                                sar.late,
+                                sar.status
+                            from scoped_attendance_records sar
+                            join scoped_employees se on se.id = sar.employee_id
+                            where sar.attendance_date between date '2026-03-01' and date '2026-03-31'
+                            order by sar.attendance_date desc, se.name asc
+                            """
+                    ),
+                    new SqlSnippet(
+                            "employee-attendance",
+                            "직원별 출근 리스트",
+                            "사번 조건을 바꿔서 특정 직원의 출근 기록만 볼 수 있습니다.",
+                            """
+                            select
+                                sar.attendance_date,
+                                se.employee_code,
+                                se.name,
+                                sar.check_in_time,
+                                sar.check_out_time,
+                                sar.late,
+                                sar.status
+                            from scoped_attendance_records sar
+                            join scoped_employees se on se.id = sar.employee_id
+                            where se.employee_code = 'EMP001'
+                            order by sar.attendance_date desc
+                            """
+                    )
+            );
+        }
+
+        return List.of(
+                new SqlSnippet(
+                        "monthly-attendance",
+                        "월별 출근 리스트",
+                        "이번 달 전체 직원 출근 기록을 날짜 역순으로 조회합니다.",
+                        """
+                        select
+                            ar.attendance_date,
+                            e.employee_code,
+                            e.name,
+                            coalesce(w.name, '본사') as workplace_name,
+                            ar.check_in_time,
+                            ar.check_out_time,
+                            ar.late,
+                            ar.status
+                        from attendance_records ar
+                        join employees e on e.id = ar.employee_id
+                        left join workplaces w on w.id = e.workplace_id
+                        where ar.attendance_date >= date_trunc('month', current_date)::date
+                          and ar.attendance_date < (date_trunc('month', current_date) + interval '1 month')::date
+                        order by ar.attendance_date desc, e.name asc
+                        """
+                ),
+                new SqlSnippet(
+                        "period-attendance",
+                        "기간별 출근 리스트",
+                        "기간 조건만 바꿔서 출근 기록을 조회할 수 있습니다.",
+                        """
+                        select
+                            ar.attendance_date,
+                            e.employee_code,
+                            e.name,
+                            coalesce(w.name, '본사') as workplace_name,
+                            ar.check_in_time,
+                            ar.check_out_time,
+                            ar.late,
+                            ar.status
+                        from attendance_records ar
+                        join employees e on e.id = ar.employee_id
+                        left join workplaces w on w.id = e.workplace_id
+                        where ar.attendance_date between date '2026-03-01' and date '2026-03-31'
+                        order by ar.attendance_date desc, e.name asc
+                        """
+                ),
+                new SqlSnippet(
+                        "employee-attendance",
+                        "직원별 출근 리스트",
+                        "사번 조건을 바꿔서 특정 직원의 출근 기록만 볼 수 있습니다.",
+                        """
+                        select
+                            ar.attendance_date,
+                            e.employee_code,
+                            e.name,
+                            coalesce(w.name, '본사') as workplace_name,
+                            ar.check_in_time,
+                            ar.check_out_time,
+                            ar.late,
+                            ar.status
+                        from attendance_records ar
+                        join employees e on e.id = ar.employee_id
+                        left join workplaces w on w.id = e.workplace_id
+                        where e.employee_code = 'EMP001'
+                        order by ar.attendance_date desc
+                        """
+                )
+        );
     }
 
     public SqlQueryResult executeReadOnlySql(String employeeCode, String queryText) {
