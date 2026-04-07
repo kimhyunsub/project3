@@ -4,4 +4,4 @@ args = ""
 For i = 0 To WScript.Arguments.Count - 1
     args = args & " """ & Replace(WScript.Arguments(i), """", """""") & """"
 Next
-shell.Run "powershell -ExecutionPolicy Bypass -File """ & scriptPath & """" & args, 0, False
+shell.Run "powershell -ExecutionPolicy Bypass -File """ & scriptPath & """" & args, 1, True

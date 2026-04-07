@@ -6,6 +6,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $jarPath = Join-Path $projectRoot "target\admin-web-0.0.1-SNAPSHOT.jar"
 $outLog = Join-Path $projectRoot "admin-web.out.log"
 $errLog = Join-Path $projectRoot "admin-web.err.log"
+$restartLog = Join-Path $projectRoot "admin-web.restart.log"
 
 function Invoke-Step {
     param(
@@ -24,6 +25,11 @@ Write-Host "==> Admin web production restart started" -ForegroundColor Cyan
 Write-Host "Project root: $projectRoot"
 
 Set-Location $projectRoot
+
+if (Test-Path $restartLog) { Remove-Item $restartLog -Force }
+Start-Transcript -Path $restartLog -Force
+
+try {
 
 $currentCommit = (git rev-parse HEAD).Trim()
 if (-not $currentCommit) {
@@ -85,3 +91,8 @@ Write-Host "Restarted commit: $currentCommit"
 Write-Host "Login URL: http://localhost:8081/login"
 Write-Host "Output log: $outLog"
 Write-Host "Error log: $errLog"
+Write-Host "Restart log: $restartLog"
+}
+finally {
+    Stop-Transcript | Out-Null
+}

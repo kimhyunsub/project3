@@ -9,6 +9,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $jarPath = Join-Path $projectRoot "target\admin-web-0.0.1-SNAPSHOT.jar"
 $outLog = Join-Path $projectRoot "admin-web.out.log"
 $errLog = Join-Path $projectRoot "admin-web.err.log"
+$deployLog = Join-Path $projectRoot "admin-web.deploy.log"
 
 function Invoke-Step {
     param(
@@ -27,6 +28,11 @@ Write-Host "==> Admin web production deploy started" -ForegroundColor Cyan
 Write-Host "Project root: $projectRoot"
 
 Set-Location $projectRoot
+
+if (Test-Path $deployLog) { Remove-Item $deployLog -Force }
+Start-Transcript -Path $deployLog -Force
+
+try {
 
 if (-not $SkipPull) {
     Write-Host "==> Pulling latest code from origin/$Branch" -ForegroundColor Yellow
@@ -95,3 +101,8 @@ Write-Host "Deployed commit: $currentCommit"
 Write-Host "Login URL: http://localhost:8081/login"
 Write-Host "Output log: $outLog"
 Write-Host "Error log: $errLog"
+Write-Host "Deploy log: $deployLog"
+}
+finally {
+    Stop-Transcript | Out-Null
+}
