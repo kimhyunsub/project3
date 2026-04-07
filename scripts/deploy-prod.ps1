@@ -1,6 +1,7 @@
 Param(
     [string]$Branch = "main",
-    [switch]$SkipPull
+    [switch]$SkipPull,
+    [switch]$ForceSync
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,6 +37,19 @@ try {
 
 if (-not $SkipPull) {
     Write-Host "==> Pulling latest code from origin/$Branch" -ForegroundColor Yellow
+    if ($ForceSync) {
+        $statusOutput = git status --porcelain
+        if ($LASTEXITCODE -ne 0) {
+            throw "git status failed."
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace(($statusOutput | Out-String))) {
+            $stashMessage = "auto-stash before deploy " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+            Write-Host "==> Local changes detected. Creating stash backup before pull." -ForegroundColor Yellow
+            Invoke-Step -Command "git" -Arguments @("stash", "push", "-u", "-m", $stashMessage) -FailureMessage "git stash failed."
+            Write-Host "==> Stashed local changes: $stashMessage" -ForegroundColor Yellow
+        }
+    }
     Invoke-Step -Command "git" -Arguments @("fetch", "origin", $Branch) -FailureMessage "git fetch failed."
     Invoke-Step -Command "git" -Arguments @("checkout", $Branch) -FailureMessage "git checkout failed."
     Invoke-Step -Command "git" -Arguments @("pull", "origin", $Branch) -FailureMessage "git pull failed."
