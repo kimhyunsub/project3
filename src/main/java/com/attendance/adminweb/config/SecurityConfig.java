@@ -1,6 +1,6 @@
 package com.attendance.adminweb.config;
 
-import com.attendance.adminweb.service.DatabaseUserDetailsService;
+import com.attendance.adminweb.service.BackendAdminUserDetailsService;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import org.springframework.context.annotation.Bean;
@@ -18,11 +18,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   DatabaseUserDetailsService databaseUserDetailsService,
+                                                   BackendAdminUserDetailsService backendAdminUserDetailsService,
                                                    AuthenticationFailureHandler authenticationFailureHandler) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**").permitAll()
+                        .requestMatchers("/js/**").permitAll()
+                        .requestMatchers("/vendor/**").permitAll()
+                        .requestMatchers("/app/**").permitAll()
                         .requestMatchers("/login").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -36,7 +39,7 @@ public class SecurityConfig {
                         .alwaysRemember(true)
                         .tokenValiditySeconds(31536000)
                         .key("attendance-admin-remember-me")
-                        .userDetailsService(databaseUserDetailsService)
+                        .userDetailsService(backendAdminUserDetailsService)
                 )
                 .logout(Customizer.withDefaults());
 

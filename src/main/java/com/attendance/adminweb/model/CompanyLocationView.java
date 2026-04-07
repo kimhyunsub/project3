@@ -7,6 +7,7 @@ public record CompanyLocationView(
         int allowedRadiusMeters,
         String lateAfterTime,
         String noticeMessage,
+        String mobileSkinKey,
         boolean enforceSingleDeviceLogin
 ) {
 }

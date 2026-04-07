@@ -32,6 +32,8 @@ public class CompanyLocationForm {
     @Size(max = 1000, message = "공지사항은 1000자 이하여야 합니다.")
     private String noticeMessage;
 
+    private String mobileSkinKey;
+
     private boolean enforceSingleDeviceLogin;
 
     public String getCompanyName() {
@@ -80,6 +82,14 @@ public class CompanyLocationForm {
 
     public void setNoticeMessage(String noticeMessage) {
         this.noticeMessage = noticeMessage;
+    }
+
+    public String getMobileSkinKey() {
+        return mobileSkinKey;
+    }
+
+    public void setMobileSkinKey(String mobileSkinKey) {
+        this.mobileSkinKey = mobileSkinKey;
     }
 
     public boolean isEnforceSingleDeviceLogin() {

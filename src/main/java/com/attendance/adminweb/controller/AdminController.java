@@ -1,10 +1,19 @@
 package com.attendance.adminweb.controller;
 
 import com.attendance.adminweb.model.CompanyLocationForm;
+import com.attendance.adminweb.model.DashboardData;
+import com.attendance.adminweb.model.DashboardPageContext;
+import com.attendance.adminweb.model.EmployeeActionResponse;
+import com.attendance.adminweb.model.EmployeePageContext;
 import com.attendance.adminweb.model.EmployeePage;
 import com.attendance.adminweb.model.EmployeeForm;
 import com.attendance.adminweb.model.EmployeeUploadResult;
-import com.attendance.adminweb.model.SqlQueryResult;
+import com.attendance.adminweb.model.InviteEmployeeForm;
+import com.attendance.adminweb.model.LocationSettingsPageContext;
+import com.attendance.adminweb.model.MonthlyAttendanceData;
+import com.attendance.adminweb.model.MonthlyAttendancePageContext;
+import com.attendance.adminweb.model.SqlConsoleResponse;
+import com.attendance.adminweb.model.SqlConsolePageContext;
 import com.attendance.adminweb.model.WorkplaceLocationForm;
 import com.attendance.adminweb.service.AdminService;
 import jakarta.validation.Valid;
@@ -12,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.time.DateTimeException;
 import java.time.YearMonth;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -20,16 +28,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.web.csrf.CsrfToken;
 
 @Controller
 public class AdminController {
@@ -49,19 +58,42 @@ public class AdminController {
     @GetMapping("/dashboard")
     public String dashboard(@RequestParam(required = false) String filter,
                             @RequestParam(required = false) Long workplaceId,
-                            Model model,
                             Principal principal) {
         Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
         String normalizedFilter = adminService.normalizeDashboardFilter(filter);
-        model.addAttribute("selectedFilter", normalizedFilter);
-        model.addAttribute("selectedFilterLabel", adminService.getDashboardFilterLabel(normalizedFilter));
-        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
-        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
-        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
-        model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
-        model.addAttribute("summary", adminService.getTodaySummary(principal.getName(), resolvedWorkplaceId));
-        model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName(), normalizedFilter, resolvedWorkplaceId));
-        return "dashboard";
+        StringBuilder redirect = new StringBuilder("redirect:/app/dashboard.html?filter=").append(normalizedFilter);
+        if (resolvedWorkplaceId != null) {
+            redirect.append("&workplaceId=").append(resolvedWorkplaceId);
+        }
+        return redirect.toString();
+    }
+
+    @GetMapping("/dashboard/data")
+    @ResponseBody
+    public DashboardData dashboardData(@RequestParam(defaultValue = "ALL") String filter,
+                                       @RequestParam(required = false) Long workplaceId,
+                                       Principal principal) {
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        return adminService.getTodayDashboard(principal.getName(), filter, resolvedWorkplaceId);
+    }
+
+    @GetMapping("/dashboard/page-context")
+    @ResponseBody
+    public DashboardPageContext dashboardPageContext(@RequestParam(defaultValue = "ALL") String filter,
+                                                     @RequestParam(required = false) Long workplaceId,
+                                                     Principal principal,
+                                                     CsrfToken csrfToken) {
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        String normalizedFilter = adminService.normalizeDashboardFilter(filter);
+        return new DashboardPageContext(
+                normalizedFilter,
+                resolvedWorkplaceId,
+                adminService.isWorkplaceScopedAdmin(principal.getName()),
+                adminService.canAccessSqlConsole(principal.getName()),
+                csrfToken.getParameterName(),
+                csrfToken.getToken(),
+                adminService.getWorkplaceOptions(principal.getName())
+        );
     }
 
     @GetMapping("/attendance/monthly")
@@ -69,23 +101,55 @@ public class AdminController {
                                     @RequestParam(required = false) Integer month,
                                     @RequestParam(required = false) String employeeCode,
                                     @RequestParam(required = false) Long workplaceId,
-                                    Model model,
                                     Principal principal) {
         YearMonth selectedMonth = resolveYearMonth(year, month);
         Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        StringBuilder redirect = new StringBuilder("redirect:/app/monthly-attendance.html?year=")
+                .append(selectedMonth.getYear())
+                .append("&month=")
+                .append(selectedMonth.getMonthValue());
+        if (employeeCode != null && !employeeCode.isBlank()) {
+            redirect.append("&employeeCode=").append(employeeCode);
+        }
+        if (resolvedWorkplaceId != null) {
+            redirect.append("&workplaceId=").append(resolvedWorkplaceId);
+        }
+        return redirect.toString();
+    }
 
-        model.addAttribute("selectedMonth", selectedMonth);
-        model.addAttribute("selectedEmployeeCode", employeeCode);
-        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
-        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
-        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
-        model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
-        model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth, resolvedWorkplaceId));
-        model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth, resolvedWorkplaceId));
-        model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth, resolvedWorkplaceId));
-        model.addAttribute("selectedEmployeeDetail",
-                adminService.getMonthlyAttendanceEmployeeDetail(principal.getName(), selectedMonth, employeeCode, resolvedWorkplaceId));
-        return "monthly-attendance";
+    @GetMapping("/attendance/monthly/data")
+    @ResponseBody
+    public MonthlyAttendanceData monthlyAttendanceData(@RequestParam Integer year,
+                                                       @RequestParam Integer month,
+                                                       @RequestParam(required = false) String employeeCode,
+                                                       @RequestParam(required = false) Long workplaceId,
+                                                       Principal principal) {
+        YearMonth selectedMonth = resolveYearMonth(year, month);
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        return adminService.getMonthlyAttendanceData(principal.getName(), selectedMonth, employeeCode, resolvedWorkplaceId);
+    }
+
+    @GetMapping("/attendance/monthly/page-context")
+    @ResponseBody
+    public MonthlyAttendancePageContext monthlyAttendancePageContext(@RequestParam Integer year,
+                                                                     @RequestParam Integer month,
+                                                                     @RequestParam(required = false) String employeeCode,
+                                                                     @RequestParam(required = false) Long workplaceId,
+                                                                     Principal principal,
+                                                                     CsrfToken csrfToken) {
+        YearMonth selectedMonth = resolveYearMonth(year, month);
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        return new MonthlyAttendancePageContext(
+                selectedMonth.getYear(),
+                selectedMonth.getMonthValue(),
+                employeeCode,
+                resolvedWorkplaceId,
+                adminService.isWorkplaceScopedAdmin(principal.getName()),
+                adminService.canAccessSqlConsole(principal.getName()),
+                csrfToken.getParameterName(),
+                csrfToken.getToken(),
+                adminService.getWorkplaceOptions(principal.getName())
+        );
     }
 
     @GetMapping("/attendance/monthly/excel")
@@ -109,27 +173,42 @@ public class AdminController {
     }
 
     @GetMapping("/sql-console")
-    public String sqlConsole(Model model, Principal principal) {
+    public String sqlConsole(Principal principal) {
         ensureSqlConsoleAccess(principal);
-        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
-        populateSqlConsoleModel(model, principal.getName(), "", null);
-        return "sql-console";
+        return "redirect:/app/sql-console.html";
     }
 
-    @PostMapping("/sql-console/execute")
-    public String executeSqlQuery(@RequestParam String queryText,
-                                  Model model,
-                                  Principal principal) {
+    @GetMapping("/sql-console/page-context")
+    @ResponseBody
+    public SqlConsolePageContext sqlConsolePageContext(Principal principal, CsrfToken csrfToken) {
         ensureSqlConsoleAccess(principal);
-        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
+        return new SqlConsolePageContext(
+                adminService.isWorkplaceScopedAdmin(principal.getName()),
+                csrfToken.getParameterName(),
+                csrfToken.getToken(),
+                adminService.getSqlConsoleSnippets(principal.getName())
+        );
+    }
+
+    @PostMapping("/sql-console/query-data")
+    @ResponseBody
+    public SqlConsoleResponse executeSqlQueryData(@RequestParam String queryText, Principal principal) {
+        ensureSqlConsoleAccess(principal);
         try {
-            SqlQueryResult queryResult = adminService.executeReadOnlySql(principal.getName(), queryText);
-            populateSqlConsoleModel(model, principal.getName(), queryText, queryResult);
+            return new SqlConsoleResponse(
+                queryText,
+                adminService.executeReadOnlySql(principal.getName(), queryText),
+                null,
+                adminService.getSqlConsoleSnippets(principal.getName())
+            );
         } catch (IllegalArgumentException exception) {
-            populateSqlConsoleModel(model, principal.getName(), queryText, null);
-            model.addAttribute("sqlErrorMessage", exception.getMessage());
+            return new SqlConsoleResponse(
+                queryText,
+                null,
+                exception.getMessage(),
+                adminService.getSqlConsoleSnippets(principal.getName())
+            );
         }
-        return "sql-console";
     }
 
     @PostMapping("/sql-console/excel")
@@ -160,12 +239,6 @@ public class AdminController {
         }
     }
 
-    private void populateSqlConsoleModel(Model model, String employeeCode, String queryText, SqlQueryResult queryResult) {
-        model.addAttribute("sqlQueryText", queryText == null ? "" : queryText);
-        model.addAttribute("queryResult", queryResult);
-        model.addAttribute("sqlSnippets", adminService.getSqlConsoleSnippets(employeeCode));
-    }
-
     private void ensureSqlConsoleAccess(Principal principal) {
         if (!adminService.canAccessSqlConsole(principal.getName())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "회사 관리자만 SQL 리포트에 접근할 수 있습니다.");
@@ -175,37 +248,77 @@ public class AdminController {
     @GetMapping("/employees")
     public String employees(@RequestParam(required = false) Long editId,
                             @RequestParam(defaultValue = "false") boolean createMode,
+                            @RequestParam(defaultValue = "false") boolean inviteMode,
                             @RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "false") boolean showDeleted,
                             @RequestParam(required = false) Long workplaceId,
-                            Model model,
                             Principal principal) {
-        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
-        EmployeePage employeePage = adminService.getEmployees(principal.getName(), showDeleted, resolvedWorkplaceId, page, EMPLOYEE_PAGE_SIZE);
-        model.addAttribute("employees", employeePage.employees());
-        model.addAttribute("currentPage", employeePage.currentPage());
-        model.addAttribute("totalPages", employeePage.totalPages());
-        model.addAttribute("totalCount", employeePage.totalCount());
-        model.addAttribute("pageSize", employeePage.pageSize());
-        model.addAttribute("hasPreviousPage", employeePage.hasPrevious());
-        model.addAttribute("hasNextPage", employeePage.hasNext());
-        model.addAttribute("editId", editId);
-        model.addAttribute("showDeleted", showDeleted);
-        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
-        model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
-        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
-        model.addAttribute("canManageAdminRoles", adminService.canManageAdminRoles(principal.getName()));
-        model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
-        boolean employeeModalOpen = editId != null || createMode || Boolean.TRUE.equals(model.asMap().get("createMode"));
-        if (!model.containsAttribute("employeeForm")) {
-            model.addAttribute("employeeForm", editId == null
-                    ? adminService.getEmployeeFormForCreate()
-                    : adminService.getEmployeeFormForEdit(principal.getName(), editId));
+        StringBuilder redirect = new StringBuilder("redirect:/app/employees.html?page=").append(page);
+        if (showDeleted) {
+            redirect.append("&showDeleted=true");
         }
-        model.addAttribute("createMode", createMode);
-        model.addAttribute("editing", editId != null);
-        model.addAttribute("employeeModalOpen", employeeModalOpen);
-        return "employees";
+        if (workplaceId != null) {
+            redirect.append("&workplaceId=").append(workplaceId);
+        }
+        if (editId != null) {
+            redirect.append("&editId=").append(editId);
+        }
+        if (createMode) {
+            redirect.append("&createMode=true");
+        }
+        if (inviteMode) {
+            redirect.append("&inviteMode=true");
+        }
+        return redirect.toString();
+    }
+
+    @GetMapping("/employees/page-context")
+    @ResponseBody
+    public EmployeePageContext employeePageContext(@RequestParam(defaultValue = "1") int page,
+                                                   @RequestParam(defaultValue = "false") boolean showDeleted,
+                                                   @RequestParam(required = false) Long workplaceId,
+                                                   @RequestParam(required = false) Long editId,
+                                                   @RequestParam(defaultValue = "false") boolean createMode,
+                                                   @RequestParam(defaultValue = "false") boolean inviteMode,
+                                                   Principal principal,
+                                                   CsrfToken csrfToken) {
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        return new EmployeePageContext(
+                page,
+                showDeleted,
+                resolvedWorkplaceId,
+                editId,
+                createMode,
+                inviteMode,
+                adminService.isWorkplaceScopedAdmin(principal.getName()),
+                adminService.canAccessSqlConsole(principal.getName()),
+                adminService.canManageAdminRoles(principal.getName()),
+                csrfToken.getParameterName(),
+                csrfToken.getToken(),
+                adminService.getWorkplaceOptions(principal.getName())
+        );
+    }
+
+    @GetMapping("/employees/create-form-data")
+    @ResponseBody
+    public EmployeeForm employeeCreateFormData() {
+        return adminService.getEmployeeFormForCreate();
+    }
+
+    @GetMapping("/employees/{employeeId}/form-data")
+    @ResponseBody
+    public EmployeeForm employeeFormData(@PathVariable Long employeeId, Principal principal) {
+        return adminService.getEmployeeFormForEdit(principal.getName(), employeeId);
+    }
+
+    @GetMapping("/employees/list-data")
+    @ResponseBody
+    public EmployeePage employeeListData(@RequestParam(defaultValue = "1") int page,
+                                         @RequestParam(defaultValue = "false") boolean showDeleted,
+                                         @RequestParam(required = false) Long workplaceId,
+                                         Principal principal) {
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        return adminService.getEmployees(principal.getName(), showDeleted, resolvedWorkplaceId, page, EMPLOYEE_PAGE_SIZE);
     }
 
     @GetMapping("/employees/template")
@@ -223,89 +336,99 @@ public class AdminController {
     }
 
     @GetMapping("/settings/location")
-    public String companyLocation(@RequestParam(required = false) Long workplaceId, Model model, Principal principal) {
+    public String companyLocation(@RequestParam(required = false) Long workplaceId, Principal principal) {
         boolean workplaceScopedAdmin = adminService.isWorkplaceScopedAdmin(principal.getName());
         Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
-        if (!model.containsAttribute("locationForm")) {
-            if (!workplaceScopedAdmin) {
-                model.addAttribute("locationForm", adminService.getCompanyLocationForm(principal.getName()));
-            }
+        StringBuilder redirect = new StringBuilder("redirect:/app/settings.html");
+        if (resolvedWorkplaceId != null) {
+            redirect.append("?workplaceId=").append(resolvedWorkplaceId);
+        } else if (workplaceScopedAdmin) {
+            redirect.append("?workplaceId=").append(adminService.getAssignedWorkplaceId(principal.getName()));
         }
-        if (!model.containsAttribute("workplaceForm")) {
-            model.addAttribute("workplaceForm", resolvedWorkplaceId == null
-                    ? new WorkplaceLocationForm()
-                    : adminService.getWorkplaceLocationForm(principal.getName(), resolvedWorkplaceId));
-        }
-        if (!model.containsAttribute("newWorkplaceForm")) {
-            model.addAttribute("newWorkplaceForm", new WorkplaceLocationForm());
-        }
-        if (!workplaceScopedAdmin) {
-            model.addAttribute("location", adminService.getCompanyLocation(principal.getName()));
-        }
-        model.addAttribute("workplaces", adminService.getWorkplaces(principal.getName()));
-        model.addAttribute("selectedWorkplaceId", resolvedWorkplaceId);
-        model.addAttribute("workplaceScopedAdmin", workplaceScopedAdmin);
-        model.addAttribute("canAccessSqlConsole", adminService.canAccessSqlConsole(principal.getName()));
-        return "location-settings";
+        return redirect.toString();
     }
 
-    @PostMapping("/settings/location")
-    public String updateCompanyLocation(@Valid @ModelAttribute("locationForm") CompanyLocationForm form,
-                                        BindingResult bindingResult,
-                                        RedirectAttributes redirectAttributes,
-                                        Principal principal) {
-        if (bindingResult.hasErrors()) {
-            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.locationForm", bindingResult);
-            redirectAttributes.addFlashAttribute("locationForm", form);
-            return "redirect:/settings/location";
-        }
-
-        adminService.updateCompanyLocation(principal.getName(), form);
-        redirectAttributes.addFlashAttribute("message", "회사 위치가 저장되었습니다.");
-        return "redirect:/settings/location";
+    @GetMapping("/settings/location/page-context")
+    @ResponseBody
+    public LocationSettingsPageContext locationSettingsPageContext(@RequestParam(required = false) Long workplaceId,
+                                                                   Principal principal,
+                                                                   CsrfToken csrfToken) {
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), workplaceId);
+        boolean workplaceScopedAdmin = adminService.isWorkplaceScopedAdmin(principal.getName());
+        return new LocationSettingsPageContext(
+                resolvedWorkplaceId,
+                workplaceScopedAdmin,
+                adminService.canAccessSqlConsole(principal.getName()),
+                csrfToken.getParameterName(),
+                csrfToken.getToken(),
+                workplaceScopedAdmin ? null : adminService.getCompanyLocation(principal.getName()),
+                resolvedWorkplaceId == null ? null : adminService.getSelectedWorkplace(principal.getName(), resolvedWorkplaceId),
+                adminService.getWorkplaces(principal.getName())
+        );
     }
 
-    @PostMapping("/settings/location/workplaces")
-    public String createWorkplace(@Valid @ModelAttribute("newWorkplaceForm") WorkplaceLocationForm form,
-                                  BindingResult bindingResult,
-                                  RedirectAttributes redirectAttributes,
-                                  Principal principal) {
+    @PostMapping("/settings/location/update-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> updateCompanyLocationData(@Valid @ModelAttribute CompanyLocationForm form,
+                                                                            BindingResult bindingResult,
+                                                                            Principal principal) {
         if (bindingResult.hasErrors()) {
-            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.newWorkplaceForm", bindingResult);
-            redirectAttributes.addFlashAttribute("newWorkplaceForm", form);
-            return "redirect:/settings/location";
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(
+                    false,
+                    bindingResult.getAllErrors().get(0).getDefaultMessage(),
+                    null
+            ));
+        }
+
+        try {
+            adminService.updateCompanyLocation(principal.getName(), form);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "회사 설정이 저장되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/settings/location/workplaces/create-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> createWorkplaceData(@Valid @ModelAttribute WorkplaceLocationForm form,
+                                                                      BindingResult bindingResult,
+                                                                      Principal principal) {
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(
+                    false,
+                    bindingResult.getAllErrors().get(0).getDefaultMessage(),
+                    null
+            ));
         }
 
         try {
             adminService.createWorkplace(principal.getName(), form);
-            redirectAttributes.addFlashAttribute("message", "사업장이 추가되었습니다.");
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
-            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
-            redirectAttributes.addFlashAttribute("newWorkplaceForm", form);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "사업장이 추가되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
         }
-        return "redirect:/settings/location";
     }
 
-    @PostMapping("/settings/location/workplaces/{workplaceId}")
-    public String updateWorkplace(@PathVariable Long workplaceId,
-                                  @Valid @ModelAttribute("workplaceForm") WorkplaceLocationForm form,
-                                  BindingResult bindingResult,
-                                  RedirectAttributes redirectAttributes,
-                                  Principal principal) {
+    @PostMapping("/settings/location/workplaces/{workplaceId}/update-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> updateWorkplaceData(@PathVariable Long workplaceId,
+                                                                      @Valid @ModelAttribute WorkplaceLocationForm form,
+                                                                      BindingResult bindingResult,
+                                                                      Principal principal) {
         if (bindingResult.hasErrors()) {
-            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.workplaceForm", bindingResult);
-            redirectAttributes.addFlashAttribute("workplaceForm", form);
-            return "redirect:/settings/location?workplaceId=" + workplaceId;
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(
+                    false,
+                    bindingResult.getAllErrors().get(0).getDefaultMessage(),
+                    null
+            ));
         }
 
         try {
             adminService.updateWorkplace(principal.getName(), workplaceId, form);
-            redirectAttributes.addFlashAttribute("message", "사업장 위치가 저장되었습니다.");
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
-            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
-            redirectAttributes.addFlashAttribute("workplaceForm", form);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "사업장 설정이 저장되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
         }
-        return "redirect:/settings/location?workplaceId=" + workplaceId;
     }
 
     @PostMapping("/employees")
@@ -328,7 +451,7 @@ public class AdminController {
         try {
             adminService.createEmployee(principal.getName(), form);
             redirectAttributes.addFlashAttribute("message", "직원이 등록되었습니다.");
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("createMode", true);
@@ -336,6 +459,28 @@ public class AdminController {
         }
 
         return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+    }
+
+    @PostMapping("/employees/create-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> createEmployeeData(@Valid @ModelAttribute EmployeeForm form,
+                                                                     BindingResult bindingResult,
+                                                                     Principal principal) {
+        validateCreateEmployeeForm(form, bindingResult);
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(
+                    false,
+                    bindingResult.getAllErrors().get(0).getDefaultMessage(),
+                    null
+            ));
+        }
+
+        try {
+            adminService.createEmployee(principal.getName(), form);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "직원이 등록되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
     }
 
     @PostMapping("/employees/upload")
@@ -389,11 +534,92 @@ public class AdminController {
             adminService.updateEmployee(principal.getName(), employeeId, form);
             redirectAttributes.addFlashAttribute("message", "직원 정보가 수정되었습니다.");
             return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", true);
             return buildEmployeesRedirect(page, showDeleted, workplaceId, employeeId, false);
+        }
+    }
+
+    @PostMapping("/employees/{employeeId}/update-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> updateEmployeeData(@PathVariable Long employeeId,
+                                                                     @Valid @ModelAttribute EmployeeForm form,
+                                                                     BindingResult bindingResult,
+                                                                     Principal principal) {
+        validateUpdateEmployeeForm(form, bindingResult);
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(
+                    false,
+                    bindingResult.getAllErrors().get(0).getDefaultMessage(),
+                    null
+            ));
+        }
+
+        try {
+            adminService.updateEmployee(principal.getName(), employeeId, form);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "직원 정보가 수정되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/employees/invite")
+    public String createEmployeeInvite(@Valid @ModelAttribute("inviteEmployeeForm") InviteEmployeeForm form,
+                                       BindingResult bindingResult,
+                                       @RequestParam(defaultValue = "1") int page,
+                                       @RequestParam(defaultValue = "false") boolean showDeleted,
+                                       @RequestParam(name = "listWorkplaceId", required = false) Long workplaceId,
+                                       RedirectAttributes redirectAttributes,
+                                       Principal principal) {
+        if (bindingResult.hasErrors()) {
+            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.inviteEmployeeForm", bindingResult);
+            redirectAttributes.addFlashAttribute("inviteEmployeeForm", form);
+            redirectAttributes.addFlashAttribute("inviteMode", true);
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+        }
+
+        try {
+            redirectAttributes.addFlashAttribute("inviteResult", adminService.createEmployeeInvite(principal.getName(), form));
+            redirectAttributes.addFlashAttribute("message", "직원 초대 링크가 생성되었습니다.");
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("inviteEmployeeForm", form);
+            redirectAttributes.addFlashAttribute("inviteMode", true);
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+        }
+    }
+
+    @PostMapping("/employees/{employeeId}/invite-link")
+    public String createInviteLinkForExistingEmployee(@PathVariable Long employeeId,
+                                                      @RequestParam(defaultValue = "1") int page,
+                                                      @RequestParam(defaultValue = "false") boolean showDeleted,
+                                                      @RequestParam(required = false) Long workplaceId,
+                                                      RedirectAttributes redirectAttributes,
+                                                      Principal principal) {
+        try {
+            redirectAttributes.addFlashAttribute("inviteResult", adminService.createInviteForExistingEmployee(principal.getName(), employeeId));
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+        }
+    }
+
+    @PostMapping("/employees/{employeeId}/invite-link-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> createInviteLinkForExistingEmployeeData(@PathVariable Long employeeId,
+                                                                                          Principal principal) {
+        try {
+            return ResponseEntity.ok(new EmployeeActionResponse(
+                    true,
+                    "직원 초대 링크가 생성되었습니다.",
+                    adminService.createInviteForExistingEmployee(principal.getName(), employeeId)
+            ));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
         }
     }
 
@@ -408,10 +634,27 @@ public class AdminController {
         try {
             adminService.updateEmployeeUsage(principal.getName(), employeeId, active);
             redirectAttributes.addFlashAttribute("message", active ? "직원이 다시 사용 상태로 변경되었습니다." : "직원이 사용 중지되었습니다.");
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
         return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+    }
+
+    @PostMapping("/employees/{employeeId}/usage-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> updateEmployeeUsageData(@PathVariable Long employeeId,
+                                                                          @RequestParam boolean active,
+                                                                          Principal principal) {
+        try {
+            adminService.updateEmployeeUsage(principal.getName(), employeeId, active);
+            return ResponseEntity.ok(new EmployeeActionResponse(
+                    true,
+                    active ? "직원이 다시 사용 상태로 변경되었습니다." : "직원이 사용 중지되었습니다.",
+                    null
+            ));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
     }
 
     @PostMapping("/employees/{employeeId}/delete")
@@ -423,10 +666,22 @@ public class AdminController {
         try {
             adminService.deleteEmployee(principal.getName(), employeeId);
             redirectAttributes.addFlashAttribute("message", "직원이 삭제 목록으로 이동되었습니다.");
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
         return buildEmployeesRedirect(page, false, workplaceId, null, false);
+    }
+
+    @PostMapping("/employees/{employeeId}/delete-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> deleteEmployeeData(@PathVariable Long employeeId,
+                                                                     Principal principal) {
+        try {
+            adminService.deleteEmployee(principal.getName(), employeeId);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "직원이 삭제 목록으로 이동되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
     }
 
     @PostMapping("/employees/{employeeId}/restore")
@@ -438,10 +693,22 @@ public class AdminController {
         try {
             adminService.restoreEmployee(principal.getName(), employeeId);
             redirectAttributes.addFlashAttribute("message", "직원이 복구되었습니다.");
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
         return buildEmployeesRedirect(page, true, workplaceId, null, false);
+    }
+
+    @PostMapping("/employees/{employeeId}/restore-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> restoreEmployeeData(@PathVariable Long employeeId,
+                                                                      Principal principal) {
+        try {
+            adminService.restoreEmployee(principal.getName(), employeeId);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "직원이 복구되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
     }
 
     @PostMapping("/employees/{employeeId}/device-reset")
@@ -454,10 +721,22 @@ public class AdminController {
         try {
             adminService.resetEmployeeDevice(principal.getName(), employeeId);
             redirectAttributes.addFlashAttribute("message", "등록된 단말이 초기화되었습니다.");
-        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
         return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
+    }
+
+    @PostMapping("/employees/{employeeId}/device-reset-data")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> resetEmployeeDeviceData(@PathVariable Long employeeId,
+                                                                          Principal principal) {
+        try {
+            adminService.resetEmployeeDevice(principal.getName(), employeeId);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "등록된 단말이 초기화되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
     }
 
     private String buildEmployeesRedirect(int page, boolean showDeleted, Long workplaceId, Long editId, boolean createMode) {
@@ -478,8 +757,11 @@ public class AdminController {
     }
 
     private void validateCreateEmployeeForm(EmployeeForm form, BindingResult bindingResult) {
+        if ("EMPLOYEE".equals(form.getNormalizedRole())) {
+            return;
+        }
         if (form.getPassword() == null || form.getPassword().isBlank()) {
-            bindingResult.rejectValue("password", "required", "비밀번호를 입력해 주세요.");
+            bindingResult.rejectValue("password", "required", "관리자 계정은 비밀번호를 입력해 주세요.");
             return;
         }
         if (form.getPassword().length() < 8) {

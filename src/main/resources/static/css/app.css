@@ -263,6 +263,12 @@ textarea:focus {
 
 .stat-link {
     display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
 }
 
 .stat-card,
@@ -441,6 +447,30 @@ th {
     color: #fff;
 }
 
+.settings-tabs {
+    gap: 12px;
+}
+
+.settings-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    border-radius: 999px;
+    padding: 8px 16px;
+    background: rgba(15, 118, 110, 0.08);
+    color: var(--primary-dark);
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+}
+
+.settings-tab.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+}
+
 .schedule-cell {
     color: var(--muted);
     font-weight: 700;
@@ -574,6 +604,14 @@ th {
     flex-wrap: wrap;
 }
 
+.button-row-end {
+    justify-content: flex-end;
+}
+
+.small-primary {
+    padding: 12px 16px;
+}
+
 .filter-form {
     grid-template-columns: repeat(3, minmax(0, 220px));
     align-items: end;
@@ -600,6 +638,183 @@ th {
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), #ffffff);
 }
 
+.invite-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.invite-result-grid strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.invite-result-grid p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.invite-link-box {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.invite-link-box span {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.invite-link-box textarea {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: rgba(248, 250, 252, 0.92);
+    padding: 14px 16px;
+    font: inherit;
+    color: var(--text);
+    resize: vertical;
+}
+
+.invite-result-modal {
+    width: min(720px, calc(100vw - 32px));
+}
+
+.invite-result-copy {
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.invite-result-highlight {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(15, 118, 110, 0.1), rgba(255, 255, 255, 0.98));
+    border: 1px solid rgba(15, 118, 110, 0.16);
+}
+
+.invite-result-highlight strong {
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.invite-highlight-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.invite-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(15, 118, 110, 0.12);
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.invite-expire-text {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.invite-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.invite-meta-card {
+    display: grid;
+    gap: 6px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.9), #ffffff);
+}
+
+.invite-meta-card strong {
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.invite-meta-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 600;
+}
+
+.invite-guide-card {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(248, 250, 252, 0.92);
+    border: 1px solid var(--line);
+}
+
+.invite-guide-list {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.invite-guide-list li + li {
+    margin-top: 6px;
+}
+
+.invite-link-field {
+    display: grid;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.invite-link-field span {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.invite-link-field textarea {
+    width: 100%;
+    min-height: 92px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(248, 250, 252, 0.96);
+    padding: 16px 18px;
+    font: inherit;
+    line-height: 1.6;
+    word-break: break-all;
+    color: var(--text);
+    resize: vertical;
+}
+
+.invite-link-field small {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
 .modal-sheet {
     position: fixed;
     inset: 0;
@@ -607,6 +822,17 @@ th {
     place-items: center;
     padding: 24px;
     z-index: 50;
+}
+
+.settings-modal-card {
+    width: min(720px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(219, 228, 240, 0.9);
+    border-radius: 28px;
+    padding: 28px;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
 }
 
 .employee-editor-modal .employee-editor-panel {
@@ -934,6 +1160,10 @@ body.confirm-open {
     .employee-editor-modal .employee-editor-panel {
         width: calc(100vw - 20px);
         max-height: calc(100vh - 20px);
+    }
+
+    .invite-highlight-header {
+        align-items: flex-start;
     }
 
     .employee-detail-modal-card {
