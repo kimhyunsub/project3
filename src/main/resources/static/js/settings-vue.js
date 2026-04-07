@@ -85,6 +85,44 @@
         return formData;
     }
 
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderNoticeInline(text) {
+        const escaped = escapeHtml(text);
+        return escaped
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+            .replace(/\{color:([^}]+)\}(.+?)\{\/color\}/g, '<span style="color:$1">$2</span>');
+    }
+
+    function renderNoticePreviewHtml(message) {
+        const lines = String(message || '')
+            .split('\n')
+            .map((line) => line.trimEnd())
+            .filter((line) => line.trim().length > 0);
+
+        if (!lines.length) {
+            return '<p class="notice-preview-empty">미리보기가 여기에 표시됩니다.</p>';
+        }
+
+        return lines.map((line) => {
+            if (line.startsWith('## ')) {
+                return `<p class="notice-preview-heading">${renderNoticeInline(line.slice(3).trim())}</p>`;
+            }
+            if (line.startsWith('- ')) {
+                return `<div class="notice-preview-bullet"><span>•</span><p>${renderNoticeInline(line.slice(2).trim())}</p></div>`;
+            }
+            return `<p>${renderNoticeInline(line.trim())}</p>`;
+        }).join('');
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const mountNode = document.getElementById('settings-app');
         if (!mountNode || !window.Vue) {
@@ -145,6 +183,15 @@
                         csrfName: this.context?.csrfParameterName || '_csrf',
                         csrfToken: this.context?.csrfToken || ''
                     };
+                },
+                companyNoticePreview() {
+                    return renderNoticePreviewHtml(this.companyForm.noticeMessage);
+                },
+                workplaceNoticePreview() {
+                    return renderNoticePreviewHtml(this.workplaceForm.noticeMessage);
+                },
+                createWorkplaceNoticePreview() {
+                    return renderNoticePreviewHtml(this.createWorkplaceForm.noticeMessage);
                 }
             },
             async mounted() {
@@ -248,6 +295,56 @@
                 showFeedback(message, type = 'success') {
                     this.feedbackMessage = message;
                     this.feedbackType = type;
+                },
+                insertNoticeSnippet(formKey, textareaRef, type) {
+                    const form = this[formKey];
+                    if (!form) {
+                        return;
+                    }
+
+                    const textarea = this.$refs[textareaRef];
+                    const currentValue = form.noticeMessage || '';
+                    const selectionStart = textarea?.selectionStart ?? currentValue.length;
+                    const selectionEnd = textarea?.selectionEnd ?? selectionStart;
+                    const selectedText = currentValue.slice(selectionStart, selectionEnd);
+                    let snippet = '';
+
+                    switch (type) {
+                        case 'heading':
+                            snippet = `## ${selectedText || '안내 제목'}`;
+                            break;
+                        case 'bullet':
+                            snippet = `- ${selectedText || '안내 내용을 입력해 주세요.'}`;
+                            break;
+                        case 'bold':
+                            snippet = `**${selectedText || '강조 문구'}**`;
+                            break;
+                        case 'link':
+                            snippet = `[${selectedText || '자세히 보기'}](https://example.com)`;
+                            break;
+                        case 'color':
+                            snippet = `{color:#d14343}${selectedText || '중요 안내'}{/color}`;
+                            break;
+                        default:
+                            return;
+                    }
+
+                    const prefix = currentValue.slice(0, selectionStart);
+                    const suffix = currentValue.slice(selectionEnd);
+                    const needsLeadingNewline = prefix.length > 0 && !prefix.endsWith('\n');
+                    const needsTrailingNewline = suffix.length > 0 && !suffix.startsWith('\n');
+                    const inserted = `${needsLeadingNewline ? '\n' : ''}${snippet}${needsTrailingNewline ? '\n' : ''}`;
+
+                    form.noticeMessage = `${prefix}${inserted}${suffix}`;
+
+                    nextTick(() => {
+                        if (!textarea) {
+                            return;
+                        }
+                        textarea.focus();
+                        const caretPosition = prefix.length + inserted.length;
+                        textarea.setSelectionRange(caretPosition, caretPosition);
+                    });
                 },
                 async loadContext(nextWorkplaceId) {
                     if (nextWorkplaceId !== undefined) {
@@ -497,7 +594,19 @@
                                     </label>
                                     <label>
                                         모바일 공지사항
-                                        <textarea v-model="companyForm.noticeMessage" rows="6" placeholder="모바일 메인 화면에 노출할 공지사항을 입력해 주세요."></textarea>
+                                        <div class="editor-toolbar">
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('companyForm', 'companyNoticeInput', 'heading')">제목</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('companyForm', 'companyNoticeInput', 'bullet')">글머리표</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('companyForm', 'companyNoticeInput', 'bold')">굵게</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('companyForm', 'companyNoticeInput', 'link')">링크</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('companyForm', 'companyNoticeInput', 'color')">강조색</button>
+                                        </div>
+                                        <p class="editor-help">모바일에서는 <code>## 제목</code>, <code>- 목록</code>, <code>**굵게**</code>, 링크, 강조색 문법이 적용됩니다.</p>
+                                        <textarea ref="companyNoticeInput" v-model="companyForm.noticeMessage" rows="6" placeholder="모바일 메인 화면에 노출할 공지사항을 입력해 주세요."></textarea>
+                                        <div class="notice-preview-card">
+                                            <div class="notice-preview-title">미리보기</div>
+                                            <div class="notice-preview-body" v-html="companyNoticePreview"></div>
+                                        </div>
                                     </label>
                                     <button type="submit" class="primary-button" :disabled="submitting">저장하기</button>
                                 </form>
@@ -532,7 +641,19 @@
                                     </label>
                                     <label>
                                         모바일 공지사항
-                                        <textarea v-model="workplaceForm.noticeMessage" rows="6" placeholder="이 사업장 직원에게만 노출할 공지사항을 입력해 주세요."></textarea>
+                                        <div class="editor-toolbar">
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('workplaceForm', 'workplaceNoticeInput', 'heading')">제목</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('workplaceForm', 'workplaceNoticeInput', 'bullet')">글머리표</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('workplaceForm', 'workplaceNoticeInput', 'bold')">굵게</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('workplaceForm', 'workplaceNoticeInput', 'link')">링크</button>
+                                            <button type="button" class="editor-button" @click="insertNoticeSnippet('workplaceForm', 'workplaceNoticeInput', 'color')">강조색</button>
+                                        </div>
+                                        <p class="editor-help">사업장 공지는 회사 기본 공지보다 우선해서 모바일에 노출됩니다.</p>
+                                        <textarea ref="workplaceNoticeInput" v-model="workplaceForm.noticeMessage" rows="6" placeholder="이 사업장 직원에게만 노출할 공지사항을 입력해 주세요."></textarea>
+                                        <div class="notice-preview-card">
+                                            <div class="notice-preview-title">미리보기</div>
+                                            <div class="notice-preview-body" v-html="workplaceNoticePreview"></div>
+                                        </div>
                                     </label>
                                     <button type="submit" class="primary-button" :disabled="submitting">사업장 저장</button>
                                 </form>
@@ -577,7 +698,19 @@
                                 </label>
                                 <label>
                                     모바일 공지사항
-                                    <textarea v-model="createWorkplaceForm.noticeMessage" rows="5" placeholder="비워두면 회사 기본 공지를 사용합니다."></textarea>
+                                    <div class="editor-toolbar">
+                                        <button type="button" class="editor-button" @click="insertNoticeSnippet('createWorkplaceForm', 'createWorkplaceNoticeInput', 'heading')">제목</button>
+                                        <button type="button" class="editor-button" @click="insertNoticeSnippet('createWorkplaceForm', 'createWorkplaceNoticeInput', 'bullet')">글머리표</button>
+                                        <button type="button" class="editor-button" @click="insertNoticeSnippet('createWorkplaceForm', 'createWorkplaceNoticeInput', 'bold')">굵게</button>
+                                        <button type="button" class="editor-button" @click="insertNoticeSnippet('createWorkplaceForm', 'createWorkplaceNoticeInput', 'link')">링크</button>
+                                        <button type="button" class="editor-button" @click="insertNoticeSnippet('createWorkplaceForm', 'createWorkplaceNoticeInput', 'color')">강조색</button>
+                                    </div>
+                                    <p class="editor-help">비워두면 회사 기본 공지가 노출됩니다.</p>
+                                    <textarea ref="createWorkplaceNoticeInput" v-model="createWorkplaceForm.noticeMessage" rows="5" placeholder="비워두면 회사 기본 공지를 사용합니다."></textarea>
+                                    <div class="notice-preview-card">
+                                        <div class="notice-preview-title">미리보기</div>
+                                        <div class="notice-preview-body" v-html="createWorkplaceNoticePreview"></div>
+                                    </div>
                                 </label>
                                 <div class="button-row button-row-end">
                                     <button type="button" class="ghost-link" @click="closeCreateWorkplaceModal">취소</button>
