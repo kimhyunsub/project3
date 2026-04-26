@@ -206,8 +206,17 @@
             },
             beforeUnmount() {
                 document.body.classList.remove('modal-open');
+                Object.keys(this._maps || {}).forEach((mapKey) => this.destroyMap(mapKey));
             },
             methods: {
+                destroyMap(mapKey) {
+                    const entry = this._maps?.[mapKey];
+                    if (!entry) {
+                        return;
+                    }
+                    entry.map.remove();
+                    delete this._maps[mapKey];
+                },
                 queueMapRefresh() {
                     if (this.mapRefreshQueued) {
                         return;
@@ -237,6 +246,10 @@
 
                     const center = this.resolveMapCenter(target);
                     let entry = this._maps[mapKey];
+                    if (entry && entry.element !== element) {
+                        this.destroyMap(mapKey);
+                        entry = null;
+                    }
                     if (!entry) {
                         const map = window.L.map(element).setView([center.lat, center.lng], 16);
                         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -257,7 +270,7 @@
                             this.queueMapRefresh();
                         });
 
-                        entry = { map, marker, circle };
+                        entry = { map, marker, circle, element };
                         this._maps[mapKey] = entry;
                     }
 
@@ -452,6 +465,7 @@
                     this.queueMapRefresh();
                 },
                 closeCreateWorkplaceModal() {
+                    this.destroyMap('create-workplace');
                     this.createWorkplaceOpen = false;
                 },
                 async submitCreateWorkplace() {
