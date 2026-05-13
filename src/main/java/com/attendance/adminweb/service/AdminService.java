@@ -289,7 +289,7 @@ public class AdminService {
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"사번", "날짜", "유형", "반차구분", "유연근무분", "사유"};
+            String[] headers = {"사번", "날짜", "유형", "반차구분", "유연근무분", "사유", "경조사구분"};
             for (int index = 0; index < headers.length; index++) {
                 Cell cell = headerRow.createCell(index);
                 cell.setCellValue(headers[index]);
@@ -319,6 +319,16 @@ public class AdminService {
             flexibleRow.createCell(3).setCellValue("");
             flexibleRow.createCell(4).setCellValue(60);
             flexibleRow.createCell(5).setCellValue("1시간 유연근무");
+            flexibleRow.createCell(6).setCellValue("");
+
+            Row specialLeaveRow = sheet.createRow(4);
+            specialLeaveRow.createCell(0).setCellValue("EMP003");
+            specialLeaveRow.createCell(1).setCellValue("2026-05-22");
+            specialLeaveRow.createCell(2).setCellValue("경조사");
+            specialLeaveRow.createCell(3).setCellValue("");
+            specialLeaveRow.createCell(4).setCellValue("");
+            specialLeaveRow.createCell(5).setCellValue("경조사 휴가");
+            specialLeaveRow.createCell(6).setCellValue("본인 결혼");
 
             for (int index = 0; index < headers.length; index++) {
                 sheet.autoSizeColumn(index);

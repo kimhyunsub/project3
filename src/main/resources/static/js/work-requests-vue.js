@@ -38,6 +38,7 @@
                         requestType: 'VACATION',
                         requestDate: new Date().toISOString().slice(0, 10),
                         halfDayType: 'MORNING',
+                        occasionType: 'SELF_MARRIAGE',
                         earlyLeaveMinutes: 30,
                         reason: ''
                     },
@@ -134,7 +135,8 @@
                                 approvedCount: requests.filter((request) => request.status === 'APPROVED').length,
                                 vacationCount: requests.filter((request) => request.requestType === 'VACATION').length,
                                 halfDayCount: requests.filter((request) => request.requestType === 'HALF_DAY').length,
-                                earlyLeaveCount: requests.filter((request) => request.requestType === 'EARLY_LEAVE').length
+                                earlyLeaveCount: requests.filter((request) => request.requestType === 'EARLY_LEAVE').length,
+                                specialLeaveCount: requests.filter((request) => request.requestType === 'SPECIAL_LEAVE').length
                             });
                         }
                         weeks.push(week);
@@ -152,6 +154,7 @@
                         vacation: monthRequests.filter((request) => request.requestType === 'VACATION').length,
                         halfDay: monthRequests.filter((request) => request.requestType === 'HALF_DAY').length,
                         earlyLeave: monthRequests.filter((request) => request.requestType === 'EARLY_LEAVE').length,
+                        specialLeave: monthRequests.filter((request) => request.requestType === 'SPECIAL_LEAVE').length,
                         pending: monthRequests.filter((request) => request.status === 'PENDING').length
                     };
                 }
@@ -267,6 +270,7 @@
                         body.set('requestType', this.createForm.requestType);
                         body.set('requestDate', this.createForm.requestDate);
                         body.set('halfDayType', this.createForm.requestType === 'HALF_DAY' ? this.createForm.halfDayType : '');
+                        body.set('occasionType', this.createForm.requestType === 'SPECIAL_LEAVE' ? this.createForm.occasionType : '');
                         body.set('earlyLeaveMinutes', this.createForm.requestType === 'EARLY_LEAVE' ? String(this.createForm.earlyLeaveMinutes || '') : '');
                         body.set('reason', this.createForm.reason || '');
                         body.set(this.context?.csrfParameterName || '_csrf', this.context?.csrfToken || '');
@@ -285,6 +289,7 @@
                             requestType: 'VACATION',
                             requestDate: new Date().toISOString().slice(0, 10),
                             halfDayType: 'MORNING',
+                            occasionType: 'SELF_MARRIAGE',
                             earlyLeaveMinutes: 30,
                             reason: ''
                         };
@@ -351,7 +356,7 @@
                     }
                 },
                 requestDetailText(request) {
-                    return request.halfDayTypeLabel || (request.earlyLeaveMinutes ? request.earlyLeaveMinutes + '분 유연근무' : '-');
+                    return request.halfDayTypeLabel || request.occasionTypeLabel || (request.earlyLeaveMinutes ? request.earlyLeaveMinutes + '분 유연근무' : '-');
                 },
                 statusClass
             },
@@ -392,7 +397,7 @@
                             <div class="panel-header">
                                 <div>
                                     <h2>신청 달력</h2>
-                                    <p class="section-copy">날짜별 휴가, 반차, 유연근무 신청을 월 단위로 확인합니다.</p>
+                                    <p class="section-copy">날짜별 휴가, 반차, 경조사, 유연근무 신청을 월 단위로 확인합니다.</p>
                                 </div>
                                 <div class="button-row">
                                     <button type="button" class="ghost-link" @click="moveMonth(-1)">이전</button>
@@ -424,6 +429,7 @@
                                 <span class="pill neutral">전체 {{ monthSummary.total }}건</span>
                                 <span class="pill success">휴가 {{ monthSummary.vacation }}건</span>
                                 <span class="pill warning">반차 {{ monthSummary.halfDay }}건</span>
+                                <span class="pill success">경조사 {{ monthSummary.specialLeave }}건</span>
                                 <span class="pill neutral">유연근무 {{ monthSummary.earlyLeave }}건</span>
                                 <span class="pill danger">대기 {{ monthSummary.pending }}건</span>
                             </div>
@@ -443,6 +449,7 @@
                                             <span class="calendar-day-badges" v-if="day.requests.length">
                                                 <span v-if="day.vacationCount" class="calendar-dot vacation">휴 {{ day.vacationCount }}</span>
                                                 <span v-if="day.halfDayCount" class="calendar-dot half">반 {{ day.halfDayCount }}</span>
+                                                <span v-if="day.specialLeaveCount" class="calendar-dot vacation">경 {{ day.specialLeaveCount }}</span>
                                                 <span v-if="day.earlyLeaveCount" class="calendar-dot flex">유 {{ day.earlyLeaveCount }}</span>
                                             </span>
                                             <span class="calendar-pending" v-if="day.pendingCount">대기 {{ day.pendingCount }}</span>
@@ -503,6 +510,7 @@
                                         <select v-model="createForm.requestType">
                                             <option value="VACATION">휴가</option>
                                             <option value="HALF_DAY">반차</option>
+                                            <option value="SPECIAL_LEAVE">경조사</option>
                                             <option value="EARLY_LEAVE">유연근무</option>
                                         </select>
                                     </label>
@@ -511,6 +519,18 @@
                                         <select v-model="createForm.halfDayType">
                                             <option value="MORNING">오전 반차</option>
                                             <option value="AFTERNOON">오후 반차</option>
+                                        </select>
+                                    </label>
+                                    <label v-if="createForm.requestType === 'SPECIAL_LEAVE'">
+                                        경조사 구분
+                                        <select v-model="createForm.occasionType">
+                                            <option value="SELF_MARRIAGE">본인 결혼</option>
+                                            <option value="CHILD_MARRIAGE">자녀 결혼</option>
+                                            <option value="SPOUSE_CHILDBIRTH">배우자 출산</option>
+                                            <option value="FAMILY_DEATH">가족 사망</option>
+                                            <option value="GRANDPARENT_DEATH">조부모 사망</option>
+                                            <option value="SIBLING_DEATH">형제자매 사망</option>
+                                            <option value="OTHER">기타 경조사</option>
                                         </select>
                                     </label>
                                     <label v-if="createForm.requestType === 'EARLY_LEAVE'">
@@ -542,7 +562,7 @@
                                 <h2>엑셀 일괄 추가</h2>
                                 <a class="ghost-link" href="/work-requests/upload-template">샘플 엑셀 다운로드</a>
                             </div>
-                            <p class="section-copy">첫 번째 시트에 사번, 날짜, 유형, 반차구분, 유연근무분, 사유 순서로 입력해 주세요. 유형은 휴가, 반차, 유연근무를 사용할 수 있습니다.</p>
+                            <p class="section-copy">첫 번째 시트에 사번, 날짜, 유형, 반차구분, 유연근무분, 사유, 경조사구분 순서로 입력해 주세요. 유형은 휴가, 반차, 경조사, 유연근무를 사용할 수 있습니다.</p>
                             <form class="upload-form" @submit.prevent="submitUpload">
                                 <label>
                                     엑셀 파일 선택
@@ -565,7 +585,7 @@
                                 <span class="pill warning">대기 {{ pendingCount }}건</span>
                             </div>
                             <p class="section-copy" v-if="context?.workplaceScopedAdmin">사업장 관리자는 담당 사업장 직원의 신청만 확인할 수 있습니다.</p>
-                            <p class="section-copy" v-else>휴가, 반차, 유연근무 신청을 한 곳에서 승인하거나 반려할 수 있습니다.</p>
+                            <p class="section-copy" v-else>휴가, 반차, 경조사, 유연근무 신청을 한 곳에서 승인하거나 반려할 수 있습니다.</p>
 
                             <div class="empty-state" v-if="!loading && filteredRequests.length === 0">등록된 신청이 없습니다.</div>
                             <div class="table-scroll" v-else>

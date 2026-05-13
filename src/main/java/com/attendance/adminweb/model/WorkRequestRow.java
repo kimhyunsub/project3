@@ -12,6 +12,8 @@ public record WorkRequestRow(
     String requestDate,
     String halfDayType,
     String halfDayTypeLabel,
+    String occasionType,
+    String occasionTypeLabel,
     Integer earlyLeaveMinutes,
     String reason,
     String reviewedByEmployeeCode,

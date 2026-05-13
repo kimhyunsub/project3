@@ -74,6 +74,7 @@ public class BackendAdminWorkRequestApiClient {
                     form.getRequestType(),
                     form.getRequestDate(),
                     form.getHalfDayType(),
+                    form.getOccasionType(),
                     form.getEarlyLeaveMinutes(),
                     form.getReason()
                 ))
@@ -164,6 +165,7 @@ public class BackendAdminWorkRequestApiClient {
         String requestType,
         String requestDate,
         String halfDayType,
+        String occasionType,
         Integer earlyLeaveMinutes,
         String reason
     ) {

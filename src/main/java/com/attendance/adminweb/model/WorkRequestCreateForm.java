@@ -14,6 +14,7 @@ public class WorkRequestCreateForm {
     private String requestDate;
 
     private String halfDayType;
+    private String occasionType;
     private Integer earlyLeaveMinutes;
     private String reason;
 
@@ -47,6 +48,14 @@ public class WorkRequestCreateForm {
 
     public void setHalfDayType(String halfDayType) {
         this.halfDayType = halfDayType;
+    }
+
+    public String getOccasionType() {
+        return occasionType;
+    }
+
+    public void setOccasionType(String occasionType) {
+        this.occasionType = occasionType;
     }
 
     public Integer getEarlyLeaveMinutes() {
