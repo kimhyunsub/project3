@@ -150,7 +150,10 @@
                         if (!response.ok) {
                             throw new Error('근무 신청 목록을 불러오지 못했습니다.');
                         }
-                        this.requests = await response.json();
+                        const requests = await response.json();
+                        this.requests = Array.isArray(requests)
+                            ? requests.filter((request) => request.status !== 'CANCELED')
+                            : [];
                     } catch (error) {
                         this.loadFailed = true;
                     } finally {
