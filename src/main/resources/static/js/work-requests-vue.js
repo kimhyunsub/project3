@@ -587,6 +587,24 @@
                             <p class="section-copy" v-if="context?.workplaceScopedAdmin">사업장 관리자는 담당 사업장 직원의 신청만 확인할 수 있습니다.</p>
                             <p class="section-copy" v-else>휴가, 반차, 경조사, 유연근무 신청을 한 곳에서 승인하거나 반려할 수 있습니다.</p>
 
+                            <div class="employee-search-bar">
+                                <label>
+                                    사원별 검색
+                                    <input v-model="employeeSearch" type="search" placeholder="이름 또는 사번 입력 시 신청 목록 자동 검색">
+                                    <div class="autocomplete-list" v-if="employeeSearchSuggestions.length">
+                                        <button
+                                            v-for="employee in employeeSearchSuggestions"
+                                            :key="'list-search-' + employee.id"
+                                            type="button"
+                                            class="autocomplete-option"
+                                            @click="selectEmployeeSearch(employee)">
+                                            {{ employee.name }} ({{ employee.employeeCode }}) · {{ employee.workplaceName }}
+                                        </button>
+                                    </div>
+                                </label>
+                                <button v-if="employeeSearch" type="button" class="ghost-link" @click="employeeSearch = ''">검색 해제</button>
+                            </div>
+
                             <div class="empty-state" v-if="!loading && filteredRequests.length === 0">등록된 신청이 없습니다.</div>
                             <div class="table-scroll" v-else>
                                 <table class="data-table">
