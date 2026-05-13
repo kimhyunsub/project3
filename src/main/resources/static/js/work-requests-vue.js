@@ -8,6 +8,17 @@
         return 'pill neutral';
     }
 
+    function toDateKey(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function createMonthCursor(date = new Date()) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const mountNode = document.getElementById('work-requests-app');
         if (!mountNode || !window.Vue) {
@@ -29,6 +40,8 @@
                     },
                     uploadFile: null,
                     uploadFailureMessages: [],
+                    calendarCursor: createMonthCursor(),
+                    selectedDate: toDateKey(new Date()),
                     loading: false,
                     actingId: null,
                     submittingCreate: false,
@@ -44,6 +57,69 @@
                 },
                 pendingCount() {
                     return this.requests.filter((request) => request.status === 'PENDING').length;
+                },
+                calendarTitle() {
+                    return `${this.calendarCursor.getFullYear()}년 ${this.calendarCursor.getMonth() + 1}월`;
+                },
+                weekdayLabels() {
+                    return ['일', '월', '화', '수', '목', '금', '토'];
+                },
+                calendarRequestsByDate() {
+                    return this.requests.reduce((groups, request) => {
+                        if (!request.requestDate) {
+                            return groups;
+                        }
+                        groups[request.requestDate] = groups[request.requestDate] || [];
+                        groups[request.requestDate].push(request);
+                        return groups;
+                    }, {});
+                },
+                calendarWeeks() {
+                    const year = this.calendarCursor.getFullYear();
+                    const month = this.calendarCursor.getMonth();
+                    const firstDay = new Date(year, month, 1);
+                    const firstCell = new Date(firstDay);
+                    firstCell.setDate(firstCell.getDate() - firstDay.getDay());
+
+                    const weeks = [];
+                    for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
+                        const week = [];
+                        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+                            const current = new Date(firstCell);
+                            current.setDate(firstCell.getDate() + weekIndex * 7 + dayIndex);
+                            const dateKey = toDateKey(current);
+                            const requests = this.calendarRequestsByDate[dateKey] || [];
+                            week.push({
+                                dateKey,
+                                day: current.getDate(),
+                                inMonth: current.getMonth() === month,
+                                today: dateKey === toDateKey(new Date()),
+                                selected: dateKey === this.selectedDate,
+                                requests,
+                                pendingCount: requests.filter((request) => request.status === 'PENDING').length,
+                                approvedCount: requests.filter((request) => request.status === 'APPROVED').length,
+                                vacationCount: requests.filter((request) => request.requestType === 'VACATION').length,
+                                halfDayCount: requests.filter((request) => request.requestType === 'HALF_DAY').length,
+                                earlyLeaveCount: requests.filter((request) => request.requestType === 'EARLY_LEAVE').length
+                            });
+                        }
+                        weeks.push(week);
+                    }
+                    return weeks;
+                },
+                selectedDateRequests() {
+                    return this.calendarRequestsByDate[this.selectedDate] || [];
+                },
+                monthSummary() {
+                    const monthPrefix = `${this.calendarCursor.getFullYear()}-${String(this.calendarCursor.getMonth() + 1).padStart(2, '0')}`;
+                    const monthRequests = this.requests.filter((request) => request.requestDate?.startsWith(monthPrefix));
+                    return {
+                        total: monthRequests.length,
+                        vacation: monthRequests.filter((request) => request.requestType === 'VACATION').length,
+                        halfDay: monthRequests.filter((request) => request.requestType === 'HALF_DAY').length,
+                        earlyLeave: monthRequests.filter((request) => request.requestType === 'EARLY_LEAVE').length,
+                        pending: monthRequests.filter((request) => request.status === 'PENDING').length
+                    };
                 }
             },
             async mounted() {
@@ -184,6 +260,28 @@
                         this.uploading = false;
                     }
                 },
+                moveMonth(offset) {
+                    this.calendarCursor = new Date(
+                        this.calendarCursor.getFullYear(),
+                        this.calendarCursor.getMonth() + offset,
+                        1
+                    );
+                },
+                goToday() {
+                    const today = new Date();
+                    this.calendarCursor = createMonthCursor(today);
+                    this.selectedDate = toDateKey(today);
+                },
+                selectCalendarDate(day) {
+                    this.selectedDate = day.dateKey;
+                    if (!day.inMonth) {
+                        const next = new Date(day.dateKey + 'T00:00:00');
+                        this.calendarCursor = createMonthCursor(next);
+                    }
+                },
+                requestDetailText(request) {
+                    return request.halfDayTypeLabel || (request.earlyLeaveMinutes ? request.earlyLeaveMinutes + '분 조기퇴근' : '-');
+                },
                 statusClass
             },
             template: `
@@ -218,6 +316,70 @@
 
                         <div v-if="feedbackMessage" :class="['alert', feedbackType === 'error' ? 'error' : 'success']">{{ feedbackMessage }}</div>
                         <div v-if="loadFailed" class="alert error">근무 신청 목록을 불러오지 못했습니다.</div>
+
+                        <section class="panel work-calendar-panel">
+                            <div class="panel-header">
+                                <div>
+                                    <h2>신청 달력</h2>
+                                    <p class="section-copy">날짜별 휴가, 반차, 유연근무 신청을 월 단위로 확인합니다.</p>
+                                </div>
+                                <div class="button-row">
+                                    <button type="button" class="ghost-link" @click="moveMonth(-1)">이전</button>
+                                    <strong class="calendar-title">{{ calendarTitle }}</strong>
+                                    <button type="button" class="ghost-link" @click="moveMonth(1)">다음</button>
+                                    <button type="button" class="primary-button small-primary" @click="goToday">오늘</button>
+                                </div>
+                            </div>
+
+                            <div class="calendar-summary-row">
+                                <span class="pill neutral">전체 {{ monthSummary.total }}건</span>
+                                <span class="pill success">휴가 {{ monthSummary.vacation }}건</span>
+                                <span class="pill warning">반차 {{ monthSummary.halfDay }}건</span>
+                                <span class="pill neutral">유연근무 {{ monthSummary.earlyLeave }}건</span>
+                                <span class="pill danger">대기 {{ monthSummary.pending }}건</span>
+                            </div>
+
+                            <div class="work-calendar-layout">
+                                <div class="work-calendar-grid">
+                                    <div class="calendar-weekday" v-for="label in weekdayLabels" :key="label">{{ label }}</div>
+                                    <template v-for="(week, weekIndex) in calendarWeeks" :key="'week-' + weekIndex">
+                                        <button
+                                            v-for="day in week"
+                                            :key="day.dateKey"
+                                            type="button"
+                                            :class="['calendar-day', !day.inMonth ? 'muted' : '', day.today ? 'today' : '', day.selected ? 'selected' : '']"
+                                            @click="selectCalendarDate(day)">
+                                            <span class="calendar-day-number">{{ day.day }}</span>
+                                            <span class="calendar-day-total" v-if="day.requests.length">{{ day.requests.length }}건</span>
+                                            <span class="calendar-day-badges" v-if="day.requests.length">
+                                                <span v-if="day.vacationCount" class="calendar-dot vacation">휴 {{ day.vacationCount }}</span>
+                                                <span v-if="day.halfDayCount" class="calendar-dot half">반 {{ day.halfDayCount }}</span>
+                                                <span v-if="day.earlyLeaveCount" class="calendar-dot flex">유 {{ day.earlyLeaveCount }}</span>
+                                            </span>
+                                            <span class="calendar-pending" v-if="day.pendingCount">대기 {{ day.pendingCount }}</span>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <aside class="calendar-detail">
+                                    <div class="calendar-detail-header">
+                                        <h3>{{ selectedDate }}</h3>
+                                        <span class="pill neutral">{{ selectedDateRequests.length }}건</span>
+                                    </div>
+                                    <div class="empty-state" v-if="selectedDateRequests.length === 0">선택한 날짜의 신청이 없습니다.</div>
+                                    <div v-else class="calendar-detail-list">
+                                        <article class="calendar-detail-item" v-for="request in selectedDateRequests" :key="'detail-' + request.id">
+                                            <div>
+                                                <strong>{{ request.employeeName }} <small>{{ request.employeeCode }}</small></strong>
+                                                <p>{{ request.requestTypeLabel }} · {{ requestDetailText(request) }}</p>
+                                                <p>{{ request.reason || '사유 없음' }}</p>
+                                            </div>
+                                            <span :class="statusClass(request.status)">{{ request.statusLabel }}</span>
+                                        </article>
+                                    </div>
+                                </aside>
+                            </div>
+                        </section>
 
                         <section class="panel">
                             <div class="panel-header">

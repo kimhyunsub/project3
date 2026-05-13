@@ -42,7 +42,8 @@
             latitude: '',
             longitude: '',
             allowedRadiusMeters: 100,
-            noticeMessage: ''
+            noticeMessage: '',
+            workRequestApprovalRequired: true
         };
     }
 
@@ -66,7 +67,8 @@
             latitude: source?.latitude ?? '',
             longitude: source?.longitude ?? '',
             allowedRadiusMeters: source?.allowedRadiusMeters ?? 100,
-            noticeMessage: source?.noticeMessage || ''
+            noticeMessage: source?.noticeMessage || '',
+            workRequestApprovalRequired: source?.workRequestApprovalRequired !== false
         };
     }
 
@@ -463,6 +465,7 @@
                 },
                 openCreateWorkplaceModal() {
                     this.createWorkplaceForm = defaultWorkplaceForm();
+                    this.createWorkplaceForm.workRequestApprovalRequired = this.companyForm.workRequestApprovalRequired;
                     this.createWorkplaceOpen = true;
                     this.queueMapRefresh();
                 },
@@ -553,11 +556,13 @@
                                     <p><strong>지각 기준</strong> <span>{{ context.companyLocation.lateAfterTime }}</span></p>
                                     <p><strong>모바일 스킨</strong> <span>{{ context.companyLocation.mobileSkinKey }}</span></p>
                                     <p><strong>단말 제한</strong> <span>{{ context.companyLocation.enforceSingleDeviceLogin ? '단말 1대 제한 사용' : '단말 제한 없음' }}</span></p>
+                                    <p><strong>근무 신청 승인</strong> <span>{{ context.companyLocation.workRequestApprovalRequired ? '관리자 승인 필요' : '신청 즉시 확정' }}</span></p>
                                 </div>
                                 <div class="location-preview" v-else-if="selectedWorkplace">
                                     <p><strong>사업장명</strong> <span>{{ selectedWorkplace.name }}</span></p>
                                     <p><strong>좌표</strong> <span>{{ selectedWorkplace.latitude }}, {{ selectedWorkplace.longitude }}</span></p>
                                     <p><strong>허용 반경</strong> <span>{{ selectedWorkplace.allowedRadiusMeters }}m</span></p>
+                                    <p><strong>근무 신청 승인</strong> <span>{{ selectedWorkplace.workRequestApprovalRequired ? '관리자 승인 필요' : '신청 즉시 확정' }}</span></p>
                                     <p><strong>모바일 공지</strong> <span>{{ selectedWorkplace.noticeMessage ? '사업장 공지 사용 중' : '회사 기본 공지 사용' }}</span></p>
                                 </div>
                                 <div class="map-help-card">
@@ -611,7 +616,7 @@
                                     </label>
                                     <label class="toggle-field">
                                         <input v-model="companyForm.workRequestApprovalRequired" type="checkbox">
-                                        <span>근무 신청 시 관리자 승인 필요</span>
+                                        <span>사업장 미지정 직원의 근무 신청 시 관리자 승인 필요</span>
                                     </label>
                                     <label>
                                         모바일 공지사항
@@ -659,6 +664,10 @@
                                     <label>
                                         허용 반경(m)
                                         <input v-model="workplaceForm.allowedRadiusMeters" type="number" @input="queueMapRefresh">
+                                    </label>
+                                    <label class="toggle-field">
+                                        <input v-model="workplaceForm.workRequestApprovalRequired" type="checkbox">
+                                        <span>이 사업장 직원의 근무 신청 시 관리자 승인 필요</span>
                                     </label>
                                     <label>
                                         모바일 공지사항
@@ -716,6 +725,10 @@
                                 <label>
                                     허용 반경(m)
                                     <input v-model="createWorkplaceForm.allowedRadiusMeters" type="number" @input="queueMapRefresh">
+                                </label>
+                                <label class="toggle-field">
+                                    <input v-model="createWorkplaceForm.workRequestApprovalRequired" type="checkbox">
+                                    <span>이 사업장 직원의 근무 신청 시 관리자 승인 필요</span>
                                 </label>
                                 <label>
                                     모바일 공지사항

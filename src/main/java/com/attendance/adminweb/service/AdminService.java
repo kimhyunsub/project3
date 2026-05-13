@@ -296,6 +296,7 @@ public class AdminService {
         form.setLongitude(workplace.longitude());
         form.setAllowedRadiusMeters(workplace.allowedRadiusMeters());
         form.setNoticeMessage(workplace.noticeMessage());
+        form.setWorkRequestApprovalRequired(workplace.workRequestApprovalRequired());
         return form;
     }
 
@@ -622,6 +623,7 @@ public class AdminService {
         form.setNoticeMessage(location.noticeMessage());
         form.setMobileSkinKey(location.mobileSkinKey());
         form.setEnforceSingleDeviceLogin(location.enforceSingleDeviceLogin());
+        form.setWorkRequestApprovalRequired(location.workRequestApprovalRequired());
         return form;
     }
 
