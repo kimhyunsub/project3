@@ -45,11 +45,15 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class AdminService {
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+
     private final BackendAdminAuthApiClient backendAdminAuthApiClient;
     private final BackendAdminDashboardApiClient backendAdminDashboardApiClient;
     private final BackendAdminMonthlyAttendanceApiClient backendAdminMonthlyAttendanceApiClient;
@@ -700,11 +704,21 @@ public class AdminService {
     }
 
     public boolean isWorkRequestApprovalRequired(String employeeCode) {
-        return backendAdminLocationApiClient.getLocationSettings(employeeCode).workRequestApprovalRequired();
+        try {
+            return backendAdminLocationApiClient.getLocationSettings(employeeCode).workRequestApprovalRequired();
+        } catch (RuntimeException exception) {
+            log.warn("Failed to load work request approval setting. employeeCode={}", employeeCode, exception);
+            return true;
+        }
     }
 
     public List<WorkRequestRow> getWorkRequests(String employeeCode) {
-        return backendAdminWorkRequestApiClient.getWorkRequests(employeeCode).requests();
+        try {
+            return backendAdminWorkRequestApiClient.getWorkRequests(employeeCode).requests();
+        } catch (RuntimeException exception) {
+            log.warn("Failed to load admin work requests. employeeCode={}", employeeCode, exception);
+            return List.of();
+        }
     }
 
     public void approveWorkRequest(String employeeCode, Long requestId, String reviewNote) {

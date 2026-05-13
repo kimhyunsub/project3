@@ -1,6 +1,9 @@
 name: Deploy To Mini PC
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       deploy_type:
@@ -28,16 +31,16 @@ jobs:
       - name: Show deployment target
         shell: powershell
         run: |
-          Write-Host "Deploy type: ${{ github.event.inputs.deploy_type }}"
-          Write-Host "Branch: ${{ github.event.inputs.branch }}"
+          Write-Host "Deploy type: ${{ github.event.inputs.deploy_type || 'deploy' }}"
+          Write-Host "Branch: ${{ github.event.inputs.branch || 'main' }}"
           Write-Host "Target path: C:\attendance-app\admin-web"
 
       - name: Run full deployment
-        if: ${{ github.event.inputs.deploy_type == 'deploy' }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_type == 'deploy' }}
         shell: powershell
         run: |
           Set-Location "C:\attendance-app\admin-web"
-          powershell -ExecutionPolicy Bypass -File ".\scripts\deploy-prod.ps1" -Branch "${{ github.event.inputs.branch }}"
+          powershell -ExecutionPolicy Bypass -File ".\scripts\deploy-prod.ps1" -Branch "${{ github.event.inputs.branch || 'main' }}"
 
       - name: Run restart only
         if: ${{ github.event.inputs.deploy_type == 'restart' }}
@@ -45,4 +48,3 @@ jobs:
         run: |
           Set-Location "C:\attendance-app\admin-web"
           powershell -ExecutionPolicy Bypass -File ".\scripts\restart-prod.ps1"
-
