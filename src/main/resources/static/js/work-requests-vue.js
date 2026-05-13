@@ -280,7 +280,7 @@
                     }
                 },
                 requestDetailText(request) {
-                    return request.halfDayTypeLabel || (request.earlyLeaveMinutes ? request.earlyLeaveMinutes + '분 조기퇴근' : '-');
+                    return request.halfDayTypeLabel || (request.earlyLeaveMinutes ? request.earlyLeaveMinutes + '분 유연근무' : '-');
                 },
                 statusClass
             },
@@ -403,7 +403,7 @@
                                         <select v-model="createForm.requestType">
                                             <option value="VACATION">휴가</option>
                                             <option value="HALF_DAY">반차</option>
-                                            <option value="EARLY_LEAVE">유연근무(조기퇴근)</option>
+                                            <option value="EARLY_LEAVE">유연근무</option>
                                         </select>
                                     </label>
                                     <label v-if="createForm.requestType === 'HALF_DAY'">
@@ -414,7 +414,7 @@
                                         </select>
                                     </label>
                                     <label v-if="createForm.requestType === 'EARLY_LEAVE'">
-                                        조기퇴근 시간
+                                        유연근무 시간
                                         <select v-model.number="createForm.earlyLeaveMinutes">
                                             <option :value="30">30분</option>
                                             <option :value="60">1시간</option>
@@ -431,7 +431,7 @@
                                 </label>
                                 <div class="button-row button-row-end">
                                     <button type="submit" class="primary-button" :disabled="submittingCreate">
-                                        {{ submittingCreate ? '등록 중...' : '근무 신청 등록' }}
+                                        {{ submittingCreate ? '등록 중...' : '신청 등록' }}
                                     </button>
                                 </div>
                             </form>
@@ -441,7 +441,7 @@
                             <div class="panel-header">
                                 <h2>엑셀 일괄 추가</h2>
                             </div>
-                            <p class="section-copy">첫 번째 시트에 사번, 날짜, 유형, 반차구분, 조기퇴근분, 사유 순서로 입력해 주세요. 유형은 휴가, 반차, 유연근무 또는 조기퇴근을 사용할 수 있습니다.</p>
+                            <p class="section-copy">첫 번째 시트에 사번, 날짜, 유형, 반차구분, 유연근무분, 사유 순서로 입력해 주세요. 유형은 휴가, 반차, 유연근무를 사용할 수 있습니다.</p>
                             <form class="upload-form" @submit.prevent="submitUpload">
                                 <label>
                                     엑셀 파일 선택
@@ -464,7 +464,7 @@
                                 <span class="pill warning">대기 {{ pendingCount }}건</span>
                             </div>
                             <p class="section-copy" v-if="context?.workplaceScopedAdmin">사업장 관리자는 담당 사업장 직원의 신청만 확인할 수 있습니다.</p>
-                            <p class="section-copy" v-else>휴가, 반차, 조기퇴근 신청을 한 곳에서 승인하거나 반려할 수 있습니다.</p>
+                            <p class="section-copy" v-else>휴가, 반차, 유연근무 신청을 한 곳에서 승인하거나 반려할 수 있습니다.</p>
 
                             <div class="empty-state" v-if="!loading && requests.length === 0">등록된 근무 신청이 없습니다.</div>
                             <div class="table-scroll" v-else>
@@ -488,7 +488,7 @@
                                         <td>{{ request.employeeName }}<br><small>{{ request.employeeCode }}</small></td>
                                         <td>{{ request.workplaceName }}</td>
                                         <td>{{ request.requestTypeLabel }}</td>
-                                        <td>{{ request.halfDayTypeLabel || (request.earlyLeaveMinutes ? request.earlyLeaveMinutes + '분 조기퇴근' : '-') }}</td>
+                                        <td>{{ requestDetailText(request) }}</td>
                                         <td><span :class="statusClass(request.status)">{{ request.statusLabel }}</span></td>
                                         <td>{{ request.reason || '-' }}</td>
                                         <td>{{ request.reviewedByName ? request.reviewedByName + ' (' + request.reviewedByEmployeeCode + ')' : '-' }}</td>
