@@ -4,6 +4,7 @@ import com.attendance.adminweb.model.CompanyLocationForm;
 import com.attendance.adminweb.model.DashboardData;
 import com.attendance.adminweb.model.DashboardPageContext;
 import com.attendance.adminweb.model.EmployeeActionResponse;
+import com.attendance.adminweb.model.EmployeeRow;
 import com.attendance.adminweb.model.EmployeePageContext;
 import com.attendance.adminweb.model.EmployeePage;
 import com.attendance.adminweb.model.EmployeeForm;
@@ -375,6 +376,13 @@ public class AdminController {
         return adminService.getWorkRequests(principal.getName());
     }
 
+    @GetMapping("/work-requests/employees")
+    @ResponseBody
+    public java.util.List<EmployeeRow> workRequestEmployees(Principal principal) {
+        Long resolvedWorkplaceId = adminService.resolveRequestedWorkplaceId(principal.getName(), null);
+        return adminService.getEmployees(principal.getName(), false, resolvedWorkplaceId, 1, 1000).employees();
+    }
+
     @PostMapping("/work-requests/create")
     @ResponseBody
     public ResponseEntity<EmployeeActionResponse> createWorkRequest(@Valid @ModelAttribute WorkRequestCreateForm form,
@@ -390,7 +398,7 @@ public class AdminController {
 
         try {
             adminService.createWorkRequest(principal.getName(), form);
-            return ResponseEntity.ok(new EmployeeActionResponse(true, "근무 신청을 등록했습니다.", null));
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "휴가 신청을 등록했습니다.", null));
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
         }
@@ -404,7 +412,7 @@ public class AdminController {
             WorkRequestUploadResult result = adminService.uploadWorkRequests(principal.getName(), workRequestFile);
             String message = result.successCount() > 0
                     ? "엑셀 업로드가 완료되었습니다. " + result.successCount() + "건 등록, " + result.failureCount() + "건 실패"
-                    : "등록된 근무 신청이 없습니다.";
+                    : "등록된 휴가 신청이 없습니다.";
             return ResponseEntity.ok(java.util.Map.of(
                     "success", result.successCount() > 0,
                     "message", message,

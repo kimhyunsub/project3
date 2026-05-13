@@ -30,6 +30,9 @@
                 return {
                     context: null,
                     requests: [],
+                    employees: [],
+                    employeeSearch: '',
+                    createEmployeeSearch: '',
                     createForm: {
                         employeeCode: '',
                         requestType: 'VACATION',
@@ -55,8 +58,39 @@
                 canAccessSqlConsole() {
                     return Boolean(this.context?.canAccessSqlConsole);
                 },
+                filteredRequests() {
+                    const keyword = this.employeeSearch.trim().toLowerCase();
+                    if (!keyword) {
+                        return this.requests;
+                    }
+                    return this.requests.filter((request) => (
+                        `${request.employeeName || ''} ${request.employeeCode || ''}`.toLowerCase().includes(keyword)
+                    ));
+                },
+                employeeSearchSuggestions() {
+                    const keyword = this.employeeSearch.trim().toLowerCase();
+                    if (!keyword) {
+                        return [];
+                    }
+                    return this.employees
+                        .filter((employee) => (
+                            `${employee.name || ''} ${employee.employeeCode || ''}`.toLowerCase().includes(keyword)
+                        ))
+                        .slice(0, 8);
+                },
+                employeeSuggestions() {
+                    const keyword = this.createEmployeeSearch.trim().toLowerCase();
+                    if (!keyword) {
+                        return [];
+                    }
+                    return this.employees
+                        .filter((employee) => (
+                            `${employee.name || ''} ${employee.employeeCode || ''}`.toLowerCase().includes(keyword)
+                        ))
+                        .slice(0, 8);
+                },
                 pendingCount() {
-                    return this.requests.filter((request) => request.status === 'PENDING').length;
+                    return this.filteredRequests.filter((request) => request.status === 'PENDING').length;
                 },
                 calendarTitle() {
                     return `${this.calendarCursor.getFullYear()}년 ${this.calendarCursor.getMonth() + 1}월`;
@@ -65,7 +99,7 @@
                     return ['일', '월', '화', '수', '목', '금', '토'];
                 },
                 calendarRequestsByDate() {
-                    return this.requests.reduce((groups, request) => {
+                    return this.filteredRequests.reduce((groups, request) => {
                         if (!request.requestDate) {
                             return groups;
                         }
@@ -112,7 +146,7 @@
                 },
                 monthSummary() {
                     const monthPrefix = `${this.calendarCursor.getFullYear()}-${String(this.calendarCursor.getMonth() + 1).padStart(2, '0')}`;
-                    const monthRequests = this.requests.filter((request) => request.requestDate?.startsWith(monthPrefix));
+                    const monthRequests = this.filteredRequests.filter((request) => request.requestDate?.startsWith(monthPrefix));
                     return {
                         total: monthRequests.length,
                         vacation: monthRequests.filter((request) => request.requestType === 'VACATION').length,
@@ -124,6 +158,7 @@
             },
             async mounted() {
                 await this.loadContext();
+                await this.loadEmployees();
                 await this.loadRequests();
             },
             methods: {
@@ -136,7 +171,7 @@
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     if (!response.ok) {
-                        throw new Error('근무 신청 화면 정보를 불러오지 못했습니다.');
+                        throw new Error('휴가 관리 화면 정보를 불러오지 못했습니다.');
                     }
                     this.context = await response.json();
                 },
@@ -148,7 +183,7 @@
                             headers: { 'X-Requested-With': 'XMLHttpRequest' }
                         });
                         if (!response.ok) {
-                            throw new Error('근무 신청 목록을 불러오지 못했습니다.');
+                            throw new Error('휴가 신청 목록을 불러오지 못했습니다.');
                         }
                         const requests = await response.json();
                         this.requests = Array.isArray(requests)
@@ -159,6 +194,33 @@
                     } finally {
                         this.loading = false;
                     }
+                },
+                async loadEmployees() {
+                    const response = await fetch('/work-requests/employees', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!response.ok) {
+                        this.employees = [];
+                        return;
+                    }
+                    this.employees = await response.json();
+                },
+                selectEmployeeSearch(employee) {
+                    this.employeeSearch = `${employee.name} ${employee.employeeCode}`;
+                },
+                syncCreateEmployeeCode() {
+                    const keyword = this.createEmployeeSearch.trim().toLowerCase();
+                    const selected = this.employees.find((employee) => {
+                        const name = (employee.name || '').toLowerCase();
+                        const code = (employee.employeeCode || '').toLowerCase();
+                        const label = `${employee.name || ''} (${employee.employeeCode || ''})`.toLowerCase();
+                        return keyword === name || keyword === code || keyword === label;
+                    });
+                    this.createForm.employeeCode = selected?.employeeCode || '';
+                },
+                selectCreateEmployee(employee) {
+                    this.createForm.employeeCode = employee.employeeCode;
+                    this.createEmployeeSearch = `${employee.name} (${employee.employeeCode})`;
                 },
                 async reviewRequest(requestId, action) {
                     const actionLabel = action === 'approve' ? '승인' : action === 'reject' ? '반려' : '취소';
@@ -216,7 +278,7 @@
                         });
                         const result = await response.json();
                         if (!response.ok || !result.success) {
-                            throw new Error(result.message || '근무 신청 등록에 실패했습니다.');
+                            throw new Error(result.message || '휴가 신청 등록에 실패했습니다.');
                         }
                         this.createForm = {
                             employeeCode: '',
@@ -226,6 +288,7 @@
                             earlyLeaveMinutes: 30,
                             reason: ''
                         };
+                        this.createEmployeeSearch = '';
                         this.showFeedback(result.message, 'success');
                         await this.loadRequests();
                     } catch (error) {
@@ -302,7 +365,7 @@
                         <nav class="nav-menu">
                             <a href="/dashboard">오늘 출근 현황</a>
                             <a href="/attendance/monthly">월별 출근 현황</a>
-                            <a href="/work-requests" class="active">근무 신청 관리</a>
+                            <a href="/work-requests" class="active">휴가 관리</a>
                             <a href="/employees">직원 목록</a>
                             <a href="/settings/location">설정</a>
                             <a v-if="canAccessSqlConsole" href="/sql-console">SQL 리포트</a>
@@ -317,13 +380,13 @@
                         <section class="page-header">
                             <div>
                                 <div class="eyebrow">Work Requests</div>
-                                <h1>근무 신청 관리</h1>
+                                <h1>휴가 관리</h1>
                             </div>
                             <p>{{ context?.approvalRequired ? '직원 신청은 승인 후 확정됩니다.' : '현재는 승인 없이 신청 즉시 확정됩니다.' }}</p>
                         </section>
 
                         <div v-if="feedbackMessage" :class="['alert', feedbackType === 'error' ? 'error' : 'success']">{{ feedbackMessage }}</div>
-                        <div v-if="loadFailed" class="alert error">근무 신청 목록을 불러오지 못했습니다.</div>
+                        <div v-if="loadFailed" class="alert error">휴가 신청 목록을 불러오지 못했습니다.</div>
 
                         <section class="panel work-calendar-panel">
                             <div class="panel-header">
@@ -337,6 +400,24 @@
                                     <button type="button" class="ghost-link" @click="moveMonth(1)">다음</button>
                                     <button type="button" class="primary-button small-primary" @click="goToday">오늘</button>
                                 </div>
+                            </div>
+
+                            <div class="employee-search-bar">
+                                <label>
+                                    직원 검색
+                                    <input v-model="employeeSearch" type="search" placeholder="이름 또는 사번 입력 시 자동 검색">
+                                    <div class="autocomplete-list" v-if="employeeSearchSuggestions.length">
+                                        <button
+                                            v-for="employee in employeeSearchSuggestions"
+                                            :key="'search-' + employee.id"
+                                            type="button"
+                                            class="autocomplete-option"
+                                            @click="selectEmployeeSearch(employee)">
+                                            {{ employee.name }} ({{ employee.employeeCode }}) · {{ employee.workplaceName }}
+                                        </button>
+                                    </div>
+                                </label>
+                                <button v-if="employeeSearch" type="button" class="ghost-link" @click="employeeSearch = ''">검색 해제</button>
                             </div>
 
                             <div class="calendar-summary-row">
@@ -397,8 +478,19 @@
                             <form class="settings-form compact-settings-form" @submit.prevent="submitCreate">
                                 <div class="form-row">
                                     <label>
-                                        사번
-                                        <input v-model="createForm.employeeCode" type="text" placeholder="EMP001">
+                                        직원명
+                                        <input v-model="createEmployeeSearch" type="search" placeholder="이름 또는 사번을 입력하세요" @input="syncCreateEmployeeCode">
+                                        <div class="autocomplete-list" v-if="employeeSuggestions.length">
+                                            <button
+                                                v-for="employee in employeeSuggestions"
+                                                :key="employee.id"
+                                                type="button"
+                                                class="autocomplete-option"
+                                                @click="selectCreateEmployee(employee)">
+                                                {{ employee.name }} ({{ employee.employeeCode }}) · {{ employee.workplaceName }}
+                                            </button>
+                                        </div>
+                                        <small v-if="createForm.employeeCode">선택된 사번: {{ createForm.employeeCode }}</small>
                                     </label>
                                     <label>
                                         날짜
@@ -475,7 +567,7 @@
                             <p class="section-copy" v-if="context?.workplaceScopedAdmin">사업장 관리자는 담당 사업장 직원의 신청만 확인할 수 있습니다.</p>
                             <p class="section-copy" v-else>휴가, 반차, 유연근무 신청을 한 곳에서 승인하거나 반려할 수 있습니다.</p>
 
-                            <div class="empty-state" v-if="!loading && requests.length === 0">등록된 근무 신청이 없습니다.</div>
+                            <div class="empty-state" v-if="!loading && filteredRequests.length === 0">등록된 신청이 없습니다.</div>
                             <div class="table-scroll" v-else>
                                 <table class="data-table">
                                     <thead>
@@ -492,7 +584,7 @@
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <tr v-for="request in requests" :key="request.id">
+                                    <tr v-for="request in filteredRequests" :key="request.id">
                                         <td>{{ request.requestDate }}</td>
                                         <td>{{ request.employeeName }}<br><small>{{ request.employeeCode }}</small></td>
                                         <td>{{ request.workplaceName }}</td>

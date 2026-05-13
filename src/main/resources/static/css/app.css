@@ -708,6 +708,51 @@ th {
     margin-bottom: 16px;
 }
 
+.employee-search-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.employee-search-bar label {
+    flex: 1;
+    display: grid;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.employee-search-bar input,
+.autocomplete-list + small {
+    max-width: 100%;
+}
+
+.autocomplete-list {
+    display: grid;
+    gap: 6px;
+    margin-top: -6px;
+    margin-bottom: 12px;
+}
+
+.autocomplete-option {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 12px;
+    text-align: left;
+}
+
+.autocomplete-option:hover {
+    border-color: rgba(15, 118, 110, 0.32);
+    background: rgba(15, 118, 110, 0.06);
+}
+
 .work-calendar-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
@@ -1431,6 +1476,11 @@ body.confirm-open {
 
     .calendar-title {
         min-width: auto;
+    }
+
+    .employee-search-bar {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .employee-editor-modal .employee-editor-panel {
