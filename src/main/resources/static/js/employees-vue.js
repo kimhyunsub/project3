@@ -487,7 +487,8 @@
                         <nav class="nav-menu">
                                     <a href="/dashboard">오늘 출근 현황</a>
                                     <a href="/attendance/monthly">월별 출근 현황</a>
-                            <a href="/employees" class="active">직원 목록</a>
+                                    <a href="/work-requests">근무 신청 관리</a>
+                                    <a href="/employees" class="active">직원 목록</a>
                             <a href="/settings/location">설정</a>
                                     <a v-if="canAccessSqlConsole" href="/sql-console">SQL 리포트</a>
                         </nav>

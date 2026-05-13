@@ -8,6 +8,7 @@ public record CompanyLocationView(
         String lateAfterTime,
         String noticeMessage,
         String mobileSkinKey,
-        boolean enforceSingleDeviceLogin
+        boolean enforceSingleDeviceLogin,
+        boolean workRequestApprovalRequired
 ) {
 }

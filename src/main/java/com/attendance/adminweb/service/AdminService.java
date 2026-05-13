@@ -6,6 +6,7 @@ import com.attendance.adminweb.client.BackendAdminEmployeeApiClient;
 import com.attendance.adminweb.client.BackendAdminLocationApiClient;
 import com.attendance.adminweb.client.BackendAdminMonthlyAttendanceApiClient;
 import com.attendance.adminweb.client.BackendAdminSqlApiClient;
+import com.attendance.adminweb.client.BackendAdminWorkRequestApiClient;
 import com.attendance.adminweb.model.AttendanceRow;
 import com.attendance.adminweb.model.AttendanceState;
 import com.attendance.adminweb.model.CompanyLocationForm;
@@ -28,6 +29,9 @@ import com.attendance.adminweb.model.SqlSnippet;
 import com.attendance.adminweb.model.WorkplaceLocationForm;
 import com.attendance.adminweb.model.WorkplaceLocationView;
 import com.attendance.adminweb.model.WorkplaceOption;
+import com.attendance.adminweb.model.WorkRequestCreateForm;
+import com.attendance.adminweb.model.WorkRequestRow;
+import com.attendance.adminweb.model.WorkRequestUploadResult;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.YearMonth;
@@ -52,19 +56,22 @@ public class AdminService {
     private final BackendAdminEmployeeApiClient backendAdminEmployeeApiClient;
     private final BackendAdminLocationApiClient backendAdminLocationApiClient;
     private final BackendAdminSqlApiClient backendAdminSqlApiClient;
+    private final BackendAdminWorkRequestApiClient backendAdminWorkRequestApiClient;
 
     public AdminService(BackendAdminAuthApiClient backendAdminAuthApiClient,
                         BackendAdminDashboardApiClient backendAdminDashboardApiClient,
                         BackendAdminMonthlyAttendanceApiClient backendAdminMonthlyAttendanceApiClient,
                         BackendAdminEmployeeApiClient backendAdminEmployeeApiClient,
                         BackendAdminLocationApiClient backendAdminLocationApiClient,
-                        BackendAdminSqlApiClient backendAdminSqlApiClient) {
+                        BackendAdminSqlApiClient backendAdminSqlApiClient,
+                        BackendAdminWorkRequestApiClient backendAdminWorkRequestApiClient) {
         this.backendAdminAuthApiClient = backendAdminAuthApiClient;
         this.backendAdminDashboardApiClient = backendAdminDashboardApiClient;
         this.backendAdminMonthlyAttendanceApiClient = backendAdminMonthlyAttendanceApiClient;
         this.backendAdminEmployeeApiClient = backendAdminEmployeeApiClient;
         this.backendAdminLocationApiClient = backendAdminLocationApiClient;
         this.backendAdminSqlApiClient = backendAdminSqlApiClient;
+        this.backendAdminWorkRequestApiClient = backendAdminWorkRequestApiClient;
     }
 
     public DashboardSummary getTodaySummary(String employeeCode, Long workplaceId) {
@@ -688,6 +695,30 @@ public class AdminService {
 
     public boolean canManageAdminRoles(String employeeCode) {
         return !isWorkplaceScopedAdmin(employeeCode);
+    }
+
+    public boolean isWorkRequestApprovalRequired(String employeeCode) {
+        return backendAdminLocationApiClient.getLocationSettings(employeeCode).workRequestApprovalRequired();
+    }
+
+    public List<WorkRequestRow> getWorkRequests(String employeeCode) {
+        return backendAdminWorkRequestApiClient.getWorkRequests(employeeCode).requests();
+    }
+
+    public void approveWorkRequest(String employeeCode, Long requestId, String reviewNote) {
+        backendAdminWorkRequestApiClient.approveWorkRequest(employeeCode, requestId, reviewNote);
+    }
+
+    public void rejectWorkRequest(String employeeCode, Long requestId, String reviewNote) {
+        backendAdminWorkRequestApiClient.rejectWorkRequest(employeeCode, requestId, reviewNote);
+    }
+
+    public void createWorkRequest(String employeeCode, WorkRequestCreateForm form) {
+        backendAdminWorkRequestApiClient.createWorkRequest(employeeCode, form);
+    }
+
+    public WorkRequestUploadResult uploadWorkRequests(String employeeCode, MultipartFile file) {
+        return backendAdminWorkRequestApiClient.uploadWorkRequests(employeeCode, file);
     }
     public String normalizeDashboardFilter(String filter) {
         if (filter == null || filter.isBlank()) {

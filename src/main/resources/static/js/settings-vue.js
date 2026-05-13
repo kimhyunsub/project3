@@ -31,7 +31,8 @@
             lateAfterTime: '09:00',
             noticeMessage: '',
             mobileSkinKey: 'classic',
-            enforceSingleDeviceLogin: false
+            enforceSingleDeviceLogin: false,
+            workRequestApprovalRequired: true
         };
     }
 
@@ -54,7 +55,8 @@
             lateAfterTime: source?.lateAfterTime || '09:00',
             noticeMessage: source?.noticeMessage || '',
             mobileSkinKey: source?.mobileSkinKey || 'classic',
-            enforceSingleDeviceLogin: Boolean(source?.enforceSingleDeviceLogin)
+            enforceSingleDeviceLogin: Boolean(source?.enforceSingleDeviceLogin),
+            workRequestApprovalRequired: source?.workRequestApprovalRequired !== false
         };
     }
 
@@ -500,6 +502,7 @@
                         <nav class="nav-menu">
                             <a href="/dashboard">오늘 출근 현황</a>
                             <a href="/attendance/monthly">월별 출근 현황</a>
+                            <a href="/work-requests">근무 신청 관리</a>
                             <a href="/employees">직원 목록</a>
                             <a href="/settings/location" class="active">설정</a>
                             <a v-if="canAccessSqlConsole" href="/sql-console">SQL 리포트</a>
@@ -605,6 +608,10 @@
                                     <label class="toggle-field">
                                         <input v-model="companyForm.enforceSingleDeviceLogin" type="checkbox">
                                         <span>계정당 로그인 단말을 1대로 제한</span>
+                                    </label>
+                                    <label class="toggle-field">
+                                        <input v-model="companyForm.workRequestApprovalRequired" type="checkbox">
+                                        <span>근무 신청 시 관리자 승인 필요</span>
                                     </label>
                                     <label>
                                         모바일 공지사항

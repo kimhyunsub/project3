@@ -14,6 +14,10 @@ import com.attendance.adminweb.model.MonthlyAttendanceData;
 import com.attendance.adminweb.model.MonthlyAttendancePageContext;
 import com.attendance.adminweb.model.SqlConsoleResponse;
 import com.attendance.adminweb.model.SqlConsolePageContext;
+import com.attendance.adminweb.model.WorkRequestCreateForm;
+import com.attendance.adminweb.model.WorkRequestPageContext;
+import com.attendance.adminweb.model.WorkRequestRow;
+import com.attendance.adminweb.model.WorkRequestUploadResult;
 import com.attendance.adminweb.model.WorkplaceLocationForm;
 import com.attendance.adminweb.service.AdminService;
 import jakarta.validation.Valid;
@@ -348,6 +352,74 @@ public class AdminController {
         return redirect.toString();
     }
 
+    @GetMapping("/work-requests")
+    public String workRequests() {
+        return "redirect:/app/work-requests.html";
+    }
+
+    @GetMapping("/work-requests/page-context")
+    @ResponseBody
+    public WorkRequestPageContext workRequestPageContext(Principal principal, CsrfToken csrfToken) {
+        return new WorkRequestPageContext(
+            adminService.isWorkplaceScopedAdmin(principal.getName()),
+            adminService.canAccessSqlConsole(principal.getName()),
+            adminService.isWorkRequestApprovalRequired(principal.getName()),
+            csrfToken.getParameterName(),
+            csrfToken.getToken()
+        );
+    }
+
+    @GetMapping("/work-requests/data")
+    @ResponseBody
+    public java.util.List<WorkRequestRow> workRequestData(Principal principal) {
+        return adminService.getWorkRequests(principal.getName());
+    }
+
+    @PostMapping("/work-requests/create")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> createWorkRequest(@Valid @ModelAttribute WorkRequestCreateForm form,
+                                                                    BindingResult bindingResult,
+                                                                    Principal principal) {
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(
+                    false,
+                    bindingResult.getAllErrors().get(0).getDefaultMessage(),
+                    null
+            ));
+        }
+
+        try {
+            adminService.createWorkRequest(principal.getName(), form);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "근무 신청을 등록했습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/work-requests/upload")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, Object>> uploadWorkRequests(@RequestParam("workRequestFile") MultipartFile workRequestFile,
+                                                                            Principal principal) {
+        try {
+            WorkRequestUploadResult result = adminService.uploadWorkRequests(principal.getName(), workRequestFile);
+            String message = result.successCount() > 0
+                    ? "엑셀 업로드가 완료되었습니다. " + result.successCount() + "건 등록, " + result.failureCount() + "건 실패"
+                    : "등록된 근무 신청이 없습니다.";
+            return ResponseEntity.ok(java.util.Map.of(
+                    "success", result.successCount() > 0,
+                    "message", message,
+                    "successCount", result.successCount(),
+                    "failureCount", result.failureCount(),
+                    "failureMessages", result.failureMessages()
+            ));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "success", false,
+                    "message", exception.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/settings/location/page-context")
     @ResponseBody
     public LocationSettingsPageContext locationSettingsPageContext(@RequestParam(required = false) Long workplaceId,
@@ -426,6 +498,32 @@ public class AdminController {
         try {
             adminService.updateWorkplace(principal.getName(), workplaceId, form);
             return ResponseEntity.ok(new EmployeeActionResponse(true, "사업장 설정이 저장되었습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/work-requests/{requestId}/approve")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> approveWorkRequest(@PathVariable Long requestId,
+                                                                     @RequestParam(required = false) String reviewNote,
+                                                                     Principal principal) {
+        try {
+            adminService.approveWorkRequest(principal.getName(), requestId, reviewNote);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "신청을 승인했습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/work-requests/{requestId}/reject")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> rejectWorkRequest(@PathVariable Long requestId,
+                                                                    @RequestParam(required = false) String reviewNote,
+                                                                    Principal principal) {
+        try {
+            adminService.rejectWorkRequest(principal.getName(), requestId, reviewNote);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "신청을 반려했습니다.", null));
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
         }

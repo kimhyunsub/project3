@@ -60,7 +60,8 @@ public class BackendAdminLocationApiClient {
                     form.getAllowedRadiusMeters(),
                     form.getNoticeMessage(),
                     normalizeMobileSkinKey(form.getMobileSkinKey()),
-                    form.isEnforceSingleDeviceLogin()
+                    form.isEnforceSingleDeviceLogin(),
+                    form.isWorkRequestApprovalRequired()
                 ))
                 .retrieve()
                 .toBodilessEntity();
@@ -143,6 +144,7 @@ public class BackendAdminLocationApiClient {
         String noticeMessage,
         String mobileSkinKey,
         boolean enforceSingleDeviceLogin,
+        boolean workRequestApprovalRequired,
         boolean workplaceScopedAdmin,
         Long assignedWorkplaceId,
         List<WorkplaceLocationView> workplaces
@@ -156,7 +158,8 @@ public class BackendAdminLocationApiClient {
                 lateAfterTime == null ? "09:00" : lateAfterTime,
                 noticeMessage,
                 StringUtils.hasText(mobileSkinKey) ? mobileSkinKey : DEFAULT_MOBILE_SKIN_KEY,
-                enforceSingleDeviceLogin
+                enforceSingleDeviceLogin,
+                workRequestApprovalRequired
             );
         }
     }
@@ -168,7 +171,8 @@ public class BackendAdminLocationApiClient {
         Integer allowedRadiusMeters,
         String noticeMessage,
         String mobileSkinKey,
-        boolean enforceSingleDeviceLogin
+        boolean enforceSingleDeviceLogin,
+        boolean workRequestApprovalRequired
     ) {
     }
 
