@@ -4,6 +4,7 @@
     function statusClass(status) {
         if (status === 'APPROVED') return 'pill success';
         if (status === 'PENDING') return 'pill warning';
+        if (status === 'CANCEL_REQUESTED') return 'pill warning';
         if (status === 'REJECTED') return 'pill danger';
         return 'pill neutral';
     }
@@ -232,7 +233,7 @@
                             ? '승인 메모가 있으면 입력해 주세요.'
                             : action === 'reject'
                                 ? '반려 사유를 입력해 주세요.'
-                                : '취소 사유가 있으면 입력해 주세요.',
+                                : '취소 승인 메모가 있으면 입력해 주세요.',
                         ''
                     );
                     if (reviewNote === null) {
@@ -642,6 +643,9 @@
                                             <div class="button-row" v-else-if="request.status === 'REJECTED'">
                                                 <button type="button" class="primary-button small-primary" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'approve')">승인</button>
                                                 <button type="button" class="ghost-link" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'cancel')">취소</button>
+                                            </div>
+                                            <div class="button-row" v-else-if="request.status === 'CANCEL_REQUESTED'">
+                                                <button type="button" class="ghost-link" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'cancel')">취소 승인</button>
                                             </div>
                                             <span v-else>-</span>
                                         </td>
