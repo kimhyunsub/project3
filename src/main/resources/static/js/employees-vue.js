@@ -93,6 +93,8 @@
                         id: null,
                         employeeCode: '',
                         name: '',
+                        email: '',
+                        phoneNumber: '',
                         role: 'EMPLOYEE',
                         password: '',
                         workStartTime: '',
@@ -300,6 +302,8 @@
                         id: null,
                         employeeCode: '',
                         name: '',
+                        email: '',
+                        phoneNumber: '',
                         role: 'EMPLOYEE',
                         password: '',
                         workStartTime: '',
@@ -350,6 +354,8 @@
                             id: form.id ?? null,
                             employeeCode: form.employeeCode ?? '',
                             name: form.name ?? '',
+                            email: form.email ?? '',
+                            phoneNumber: form.phoneNumber ?? '',
                             role: form.role ?? 'EMPLOYEE',
                             password: '',
                             workStartTime: form.workStartTime ?? '',
@@ -370,6 +376,8 @@
                         body.set(this.security.csrfName, this.security.csrfToken);
                         body.set('employeeCode', this.employeeForm.employeeCode || '');
                         body.set('name', this.employeeForm.name || '');
+                        body.set('email', this.employeeForm.email || '');
+                        body.set('phoneNumber', this.employeeForm.phoneNumber || '');
                         body.set('role', this.employeeForm.role || 'EMPLOYEE');
                         body.set('password', this.employeeForm.password || '');
                         body.set('workStartTime', this.employeeForm.workStartTime || '');
@@ -691,6 +699,17 @@
                                         <label>
                                             이름
                                             <input type="text" v-model="employeeForm.name" placeholder="직원 이름">
+                                        </label>
+                                    </div>
+
+                                    <div class="form-row" v-if="employeeFormLoaded">
+                                        <label>
+                                            이메일
+                                            <input type="email" v-model="employeeForm.email" placeholder="employee@example.com">
+                                        </label>
+                                        <label>
+                                            휴대폰번호
+                                            <input type="tel" v-model="employeeForm.phoneNumber" placeholder="010-1234-5678">
                                         </label>
                                     </div>
 

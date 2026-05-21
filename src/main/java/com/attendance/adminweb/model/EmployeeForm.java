@@ -14,6 +14,12 @@ public class EmployeeForm {
     @Size(max = 100, message = "이름은 100자 이하여야 합니다.")
     private String name;
 
+    @Size(max = 254, message = "이메일은 254자 이하여야 합니다.")
+    private String email;
+
+    @Size(max = 30, message = "휴대폰번호는 30자 이하여야 합니다.")
+    private String phoneNumber;
+
     @NotBlank(message = "권한을 선택해 주세요.")
     private String role;
 
@@ -47,6 +53,22 @@ public class EmployeeForm {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     public String getRole() {

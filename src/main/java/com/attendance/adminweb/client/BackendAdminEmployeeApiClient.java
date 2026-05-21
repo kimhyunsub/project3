@@ -61,6 +61,8 @@ public class BackendAdminEmployeeApiClient {
                     employee.id(),
                     employee.employeeCode(),
                     employee.name(),
+                    employee.email(),
+                    employee.phoneNumber(),
                     employee.workplaceName(),
                     employee.role(),
                     employee.workStartTime(),
@@ -105,6 +107,8 @@ public class BackendAdminEmployeeApiClient {
             form.setId(response.id());
             form.setEmployeeCode(response.employeeCode());
             form.setName(response.name());
+            form.setEmail(response.email());
+            form.setPhoneNumber(response.phoneNumber());
             form.setRole(response.role());
             form.setPassword("");
             form.setWorkStartTime(emptyIfHyphen(response.workStartTime()));
@@ -275,6 +279,8 @@ public class BackendAdminEmployeeApiClient {
         InternalEmployeeUpsertRequest request = new InternalEmployeeUpsertRequest();
         request.setEmployeeCode(form.getEmployeeCode());
         request.setName(form.getName());
+        request.setEmail(form.getEmail());
+        request.setPhoneNumber(form.getPhoneNumber());
         request.setRole(form.getRole());
         request.setPassword(form.getPassword());
         request.setWorkStartTime(form.getWorkStartTime());
@@ -328,6 +334,8 @@ public class BackendAdminEmployeeApiClient {
         Long id,
         String employeeCode,
         String name,
+        String email,
+        String phoneNumber,
         String workplaceName,
         String role,
         String workStartTime,
@@ -345,6 +353,8 @@ public class BackendAdminEmployeeApiClient {
         Long id,
         String employeeCode,
         String name,
+        String email,
+        String phoneNumber,
         String role,
         String workStartTime,
         String workEndTime,
@@ -381,6 +391,8 @@ public class BackendAdminEmployeeApiClient {
     private static class InternalEmployeeUpsertRequest {
         private String employeeCode;
         private String name;
+        private String email;
+        private String phoneNumber;
         private String role;
         private String password;
         private String workStartTime;
@@ -401,6 +413,22 @@ public class BackendAdminEmployeeApiClient {
 
         public void setName(String name) {
             this.name = name;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPhoneNumber() {
+            return phoneNumber;
+        }
+
+        public void setPhoneNumber(String phoneNumber) {
+            this.phoneNumber = phoneNumber;
         }
 
         public String getRole() {
