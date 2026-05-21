@@ -9,6 +9,7 @@ public record CompanyLocationView(
         String noticeMessage,
         String mobileSkinKey,
         boolean enforceSingleDeviceLogin,
-        boolean workRequestApprovalRequired
+        boolean workRequestApprovalRequired,
+        boolean workRequestEnabled
 ) {
 }

@@ -61,7 +61,8 @@ public class BackendAdminLocationApiClient {
                     form.getNoticeMessage(),
                     normalizeMobileSkinKey(form.getMobileSkinKey()),
                     form.isEnforceSingleDeviceLogin(),
-                    form.isWorkRequestApprovalRequired()
+                    form.isWorkRequestApprovalRequired(),
+                    form.isWorkRequestEnabled()
                 ))
                 .retrieve()
                 .toBodilessEntity();
@@ -147,6 +148,7 @@ public class BackendAdminLocationApiClient {
         String mobileSkinKey,
         boolean enforceSingleDeviceLogin,
         boolean workRequestApprovalRequired,
+        boolean workRequestEnabled,
         boolean workplaceScopedAdmin,
         Long assignedWorkplaceId,
         List<WorkplaceLocationView> workplaces
@@ -161,7 +163,8 @@ public class BackendAdminLocationApiClient {
                 noticeMessage,
                 StringUtils.hasText(mobileSkinKey) ? mobileSkinKey : DEFAULT_MOBILE_SKIN_KEY,
                 enforceSingleDeviceLogin,
-                workRequestApprovalRequired
+                workRequestApprovalRequired,
+                workRequestEnabled
             );
         }
     }
@@ -174,7 +177,8 @@ public class BackendAdminLocationApiClient {
         String noticeMessage,
         String mobileSkinKey,
         boolean enforceSingleDeviceLogin,
-        boolean workRequestApprovalRequired
+        boolean workRequestApprovalRequired,
+        boolean workRequestEnabled
     ) {
     }
 

@@ -695,6 +695,7 @@ public class AdminService {
         form.setMobileSkinKey(location.mobileSkinKey());
         form.setEnforceSingleDeviceLogin(location.enforceSingleDeviceLogin());
         form.setWorkRequestApprovalRequired(location.workRequestApprovalRequired());
+        form.setWorkRequestEnabled(location.workRequestEnabled());
         return form;
     }
 

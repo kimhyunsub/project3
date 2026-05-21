@@ -38,6 +38,8 @@ public class CompanyLocationForm {
 
     private boolean workRequestApprovalRequired;
 
+    private boolean workRequestEnabled = true;
+
     public String getCompanyName() {
         return companyName;
     }
@@ -108,5 +110,13 @@ public class CompanyLocationForm {
 
     public void setWorkRequestApprovalRequired(boolean workRequestApprovalRequired) {
         this.workRequestApprovalRequired = workRequestApprovalRequired;
+    }
+
+    public boolean isWorkRequestEnabled() {
+        return workRequestEnabled;
+    }
+
+    public void setWorkRequestEnabled(boolean workRequestEnabled) {
+        this.workRequestEnabled = workRequestEnabled;
     }
 }

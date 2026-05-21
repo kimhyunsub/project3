@@ -32,7 +32,8 @@
             noticeMessage: '',
             mobileSkinKey: 'classic',
             enforceSingleDeviceLogin: false,
-            workRequestApprovalRequired: true
+            workRequestApprovalRequired: true,
+            workRequestEnabled: true
         };
     }
 
@@ -57,7 +58,8 @@
             noticeMessage: source?.noticeMessage || '',
             mobileSkinKey: source?.mobileSkinKey || 'classic',
             enforceSingleDeviceLogin: Boolean(source?.enforceSingleDeviceLogin),
-            workRequestApprovalRequired: source?.workRequestApprovalRequired !== false
+            workRequestApprovalRequired: source?.workRequestApprovalRequired !== false,
+            workRequestEnabled: source?.workRequestEnabled !== false
         };
     }
 
@@ -79,9 +81,7 @@
         }
         Object.entries(source).forEach(([key, value]) => {
             if (typeof value === 'boolean') {
-                if (value) {
-                    formData.append(key, 'true');
-                }
+                formData.append(key, value ? 'true' : 'false');
                 return;
             }
             formData.append(key, value ?? '');
@@ -556,6 +556,7 @@
                                     <p><strong>지각 기준</strong> <span>{{ context.companyLocation.lateAfterTime }}</span></p>
                                     <p><strong>모바일 스킨</strong> <span>{{ context.companyLocation.mobileSkinKey }}</span></p>
                                     <p><strong>단말 제한</strong> <span>{{ context.companyLocation.enforceSingleDeviceLogin ? '단말 1대 제한 사용' : '단말 제한 없음' }}</span></p>
+                                    <p><strong>휴가신청 기능</strong> <span>{{ context.companyLocation.workRequestEnabled ? '사용' : '미사용' }}</span></p>
                                     <p><strong>근무 신청 승인</strong> <span>{{ context.companyLocation.workRequestApprovalRequired ? '관리자 승인 필요' : '신청 즉시 확정' }}</span></p>
                                 </div>
                                 <div class="location-preview" v-else-if="selectedWorkplace">
@@ -617,6 +618,10 @@
                                     <label class="toggle-field">
                                         <input v-model="companyForm.workRequestApprovalRequired" type="checkbox">
                                         <span>사업장 미지정 직원의 근무 신청 시 관리자 승인 필요</span>
+                                    </label>
+                                    <label class="toggle-field">
+                                        <input v-model="companyForm.workRequestEnabled" type="checkbox">
+                                        <span>직원 모바일 휴가신청 기능 사용</span>
                                     </label>
                                     <label>
                                         모바일 공지사항
