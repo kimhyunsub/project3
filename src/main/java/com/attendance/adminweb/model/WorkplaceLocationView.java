@@ -7,6 +7,8 @@ public record WorkplaceLocationView(
         double longitude,
         int allowedRadiusMeters,
         String noticeMessage,
-        boolean workRequestApprovalRequired
+        boolean workRequestApprovalRequired,
+        boolean workRequestEnabled,
+        boolean enforceSingleDeviceLogin
 ) {
 }

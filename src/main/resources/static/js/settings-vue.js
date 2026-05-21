@@ -44,7 +44,9 @@
             longitude: '',
             allowedRadiusMeters: 100,
             noticeMessage: '',
-            workRequestApprovalRequired: true
+            workRequestApprovalRequired: true,
+            workRequestEnabled: true,
+            enforceSingleDeviceLogin: true
         };
     }
 
@@ -70,7 +72,9 @@
             longitude: source?.longitude ?? '',
             allowedRadiusMeters: source?.allowedRadiusMeters ?? 100,
             noticeMessage: source?.noticeMessage || '',
-            workRequestApprovalRequired: source?.workRequestApprovalRequired !== false
+            workRequestApprovalRequired: source?.workRequestApprovalRequired !== false,
+            workRequestEnabled: source?.workRequestEnabled !== false,
+            enforceSingleDeviceLogin: source?.enforceSingleDeviceLogin !== false
         };
     }
 
@@ -466,6 +470,8 @@
                 openCreateWorkplaceModal() {
                     this.createWorkplaceForm = defaultWorkplaceForm();
                     this.createWorkplaceForm.workRequestApprovalRequired = this.companyForm.workRequestApprovalRequired;
+                    this.createWorkplaceForm.workRequestEnabled = this.companyForm.workRequestEnabled;
+                    this.createWorkplaceForm.enforceSingleDeviceLogin = this.companyForm.enforceSingleDeviceLogin;
                     this.createWorkplaceOpen = true;
                     this.queueMapRefresh();
                 },
@@ -563,6 +569,8 @@
                                     <p><strong>사업장명</strong> <span>{{ selectedWorkplace.name }}</span></p>
                                     <p><strong>좌표</strong> <span>{{ selectedWorkplace.latitude }}, {{ selectedWorkplace.longitude }}</span></p>
                                     <p><strong>허용 반경</strong> <span>{{ selectedWorkplace.allowedRadiusMeters }}m</span></p>
+                                    <p><strong>단말 제한</strong> <span>{{ selectedWorkplace.enforceSingleDeviceLogin ? '단말 1대 제한 사용' : '단말 제한 없음' }}</span></p>
+                                    <p><strong>휴가신청 기능</strong> <span>{{ selectedWorkplace.workRequestEnabled ? '사용' : '미사용' }}</span></p>
                                     <p><strong>근무 신청 승인</strong> <span>{{ selectedWorkplace.workRequestApprovalRequired ? '관리자 승인 필요' : '신청 즉시 확정' }}</span></p>
                                     <p><strong>모바일 공지</strong> <span>{{ selectedWorkplace.noticeMessage ? '사업장 공지 사용 중' : '회사 기본 공지 사용' }}</span></p>
                                 </div>
@@ -674,6 +682,14 @@
                                         <input v-model="workplaceForm.workRequestApprovalRequired" type="checkbox">
                                         <span>이 사업장 직원의 근무 신청 시 관리자 승인 필요</span>
                                     </label>
+                                    <label class="toggle-field">
+                                        <input v-model="workplaceForm.workRequestEnabled" type="checkbox">
+                                        <span>이 사업장 직원의 모바일 휴가신청 기능 사용</span>
+                                    </label>
+                                    <label class="toggle-field">
+                                        <input v-model="workplaceForm.enforceSingleDeviceLogin" type="checkbox">
+                                        <span>이 사업장 직원의 계정당 로그인 단말을 1대로 제한</span>
+                                    </label>
                                     <label>
                                         모바일 공지사항
                                         <div class="editor-toolbar">
@@ -734,6 +750,14 @@
                                 <label class="toggle-field">
                                     <input v-model="createWorkplaceForm.workRequestApprovalRequired" type="checkbox">
                                     <span>이 사업장 직원의 근무 신청 시 관리자 승인 필요</span>
+                                </label>
+                                <label class="toggle-field">
+                                    <input v-model="createWorkplaceForm.workRequestEnabled" type="checkbox">
+                                    <span>이 사업장 직원의 모바일 휴가신청 기능 사용</span>
+                                </label>
+                                <label class="toggle-field">
+                                    <input v-model="createWorkplaceForm.enforceSingleDeviceLogin" type="checkbox">
+                                    <span>이 사업장 직원의 계정당 로그인 단말을 1대로 제한</span>
                                 </label>
                                 <label>
                                     모바일 공지사항

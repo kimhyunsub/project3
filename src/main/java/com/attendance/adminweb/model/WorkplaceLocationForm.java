@@ -31,6 +31,8 @@ public class WorkplaceLocationForm {
     private String noticeMessage;
 
     private boolean workRequestApprovalRequired = true;
+    private boolean workRequestEnabled = true;
+    private boolean enforceSingleDeviceLogin = true;
 
     public String getName() {
         return name;
@@ -78,5 +80,21 @@ public class WorkplaceLocationForm {
 
     public void setWorkRequestApprovalRequired(boolean workRequestApprovalRequired) {
         this.workRequestApprovalRequired = workRequestApprovalRequired;
+    }
+
+    public boolean isWorkRequestEnabled() {
+        return workRequestEnabled;
+    }
+
+    public void setWorkRequestEnabled(boolean workRequestEnabled) {
+        this.workRequestEnabled = workRequestEnabled;
+    }
+
+    public boolean isEnforceSingleDeviceLogin() {
+        return enforceSingleDeviceLogin;
+    }
+
+    public void setEnforceSingleDeviceLogin(boolean enforceSingleDeviceLogin) {
+        this.enforceSingleDeviceLogin = enforceSingleDeviceLogin;
     }
 }

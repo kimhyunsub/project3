@@ -368,6 +368,8 @@ public class AdminService {
         form.setAllowedRadiusMeters(workplace.allowedRadiusMeters());
         form.setNoticeMessage(workplace.noticeMessage());
         form.setWorkRequestApprovalRequired(workplace.workRequestApprovalRequired());
+        form.setWorkRequestEnabled(workplace.workRequestEnabled());
+        form.setEnforceSingleDeviceLogin(workplace.enforceSingleDeviceLogin());
         return form;
     }
 

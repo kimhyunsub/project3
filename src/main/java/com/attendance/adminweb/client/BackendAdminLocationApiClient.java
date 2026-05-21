@@ -83,7 +83,9 @@ public class BackendAdminLocationApiClient {
                     form.getLongitude(),
                     form.getAllowedRadiusMeters(),
                     form.getNoticeMessage(),
-                    form.isWorkRequestApprovalRequired()
+                    form.isWorkRequestApprovalRequired(),
+                    form.isWorkRequestEnabled(),
+                    form.isEnforceSingleDeviceLogin()
                 ))
                 .retrieve()
                 .toBodilessEntity();
@@ -104,7 +106,9 @@ public class BackendAdminLocationApiClient {
                     form.getLongitude(),
                     form.getAllowedRadiusMeters(),
                     form.getNoticeMessage(),
-                    form.isWorkRequestApprovalRequired()
+                    form.isWorkRequestApprovalRequired(),
+                    form.isWorkRequestEnabled(),
+                    form.isEnforceSingleDeviceLogin()
                 ))
                 .retrieve()
                 .toBodilessEntity();
@@ -188,7 +192,9 @@ public class BackendAdminLocationApiClient {
         Double longitude,
         Integer allowedRadiusMeters,
         String noticeMessage,
-        boolean workRequestApprovalRequired
+        boolean workRequestApprovalRequired,
+        boolean workRequestEnabled,
+        boolean enforceSingleDeviceLogin
     ) {
     }
 }
